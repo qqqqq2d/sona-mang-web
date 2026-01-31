@@ -3,8 +3,23 @@ interface SoundEffect {
   loaded: boolean;
 }
 
+export type SoundName = 'correct' | 'wrong' | 'selection' | 'selected';
+
+export interface SoundSettings {
+  correct: boolean;
+  wrong: boolean;
+  selection: boolean;
+  selected: boolean;
+}
+
 let audioContext: AudioContext | null = null;
 const sounds: Map<string, SoundEffect> = new Map();
+const soundEnabled: SoundSettings = {
+  correct: true,
+  wrong: true,
+  selection: false,
+  selected: true,
+};
 
 export async function initAudio(): Promise<boolean> {
   try {
@@ -38,8 +53,9 @@ export async function loadSound(name: string, path: string): Promise<boolean> {
   }
 }
 
-export function playSound(name: string, volume: number = 1.0): void {
+export function playSound(name: SoundName, volume: number = 1.0): void {
   if (!audioContext) return;
+  if (!soundEnabled[name]) return;
 
   const sound = sounds.get(name);
   if (!sound || !sound.buffer) return;
@@ -68,4 +84,23 @@ export async function loadAllSounds(): Promise<void> {
     loadSound('selection', '/assets/sounds/selection.wav'),
     loadSound('selected', '/assets/sounds/selected.wav'),
   ]);
+}
+
+export function setSoundEnabled(name: SoundName, enabled: boolean): void {
+  soundEnabled[name] = enabled;
+}
+
+export function isSoundEnabled(name: SoundName): boolean {
+  return soundEnabled[name];
+}
+
+export function getSoundSettings(): Readonly<SoundSettings> {
+  return { ...soundEnabled };
+}
+
+export function setAllSoundsEnabled(enabled: boolean): void {
+  soundEnabled.correct = enabled;
+  soundEnabled.wrong = enabled;
+  soundEnabled.selection = enabled;
+  soundEnabled.selected = enabled;
 }

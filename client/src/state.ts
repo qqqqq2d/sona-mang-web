@@ -67,8 +67,10 @@ export interface GameState {
   prevSelectedIndex: number;
   menuTransitionTime: number;
   menuPressedIndex: number; // Which menu item is being touched (-1 for none)
+  menuHoveredIndex: number; // Which menu item is being hovered (-1 for none)
   menuHighlightOpacity: number[]; // Highlight opacity for each menu item
   pressedButton: string | null; // Which button is being touched (by name)
+  hoveredButton: string | null; // Which button is being hovered (by name)
   buttonHighlightOpacity: { [key: string]: number }; // Highlight opacity for each button
 
   // Animation
@@ -122,8 +124,10 @@ export function createInitialState(): GameState {
     prevSelectedIndex: -1,
     menuTransitionTime: 0,
     menuPressedIndex: -1,
+    menuHoveredIndex: -1,
     menuHighlightOpacity: [0, 0],
     pressedButton: null,
+    hoveredButton: null,
     buttonHighlightOpacity: {},
 
     animTime: 0,

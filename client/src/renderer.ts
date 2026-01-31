@@ -26,7 +26,7 @@ const isMobile = (): boolean => {
 
 // Colors
 const BG_COLOR = '#000005';
-const BG_MENU_COLOR = '#000007';
+const BG_MENU_COLOR = '#000009';
 const BG_GAME_OVER = '#000007';
 
 interface ScaleInfo {
@@ -35,6 +35,7 @@ interface ScaleInfo {
   scaleX: number;
   scaleY: number;
   scale: number;
+  mobileBoost: number;
 }
 
 let canvas: HTMLCanvasElement;
@@ -185,12 +186,24 @@ function handleResize(): void {
   const scaleX = width / REFERENCE_WIDTH;
   const scaleY = height / REFERENCE_HEIGHT;
 
+  // Calculate mobile boost for narrow screens
+  // On narrow/portrait screens, boost text and UI elements
+  const aspectRatio = width / height;
+  let mobileBoost = 1.0;
+  if (aspectRatio < 1.0) {
+    // Portrait mode: boost more as screen gets narrower
+    // At aspect ratio 0.5 (very narrow), boost is ~1.4
+    // At aspect ratio 1.0 (square), boost is 1.0
+    mobileBoost = 1.0 + (1.0 - aspectRatio) * 0.4;
+  }
+
   scale = {
     windowWidth: width,
     windowHeight: height,
     scaleX,
     scaleY,
     scale: Math.min(scaleX, scaleY),
+    mobileBoost,
   };
 }
 
@@ -203,7 +216,11 @@ function y(value: number): number {
 }
 
 function fontSize(size: number): number {
-  return Math.round(size * scale.scale);
+  return Math.round(size * scale.scale * scale.mobileBoost);
+}
+
+function uiScale(): number {
+  return scale.scale * scale.mobileBoost;
 }
 
 function drawText(
@@ -357,11 +374,15 @@ function drawButton(
   refHeight: number,
   highlightOpacity: number = 0
 ): void {
-  const bx = x(refX);
-  const by = y(refY);
-  const bw = x(refWidth);
-  const bh = y(refHeight);
-  const boxRadius = Math.min(bh / 2, 20); // Pill-shaped, capped at 20
+  // Apply mobile boost to button dimensions, adjust position to keep centered
+  const boost = scale.mobileBoost;
+  const originalW = x(refWidth);
+  const originalH = y(refHeight);
+  const bw = originalW * boost;
+  const bh = originalH * boost;
+  const bx = x(refX) - (bw - originalW) / 2;
+  const by = y(refY) - (bh - originalH) / 2;
+  const boxRadius = Math.min(bh / 2, 20 * boost); // Pill-shaped, capped
 
   // Border opacity: base 0.6, highlighted up to 1.0
   const borderOpacity = 0.6 + highlightOpacity * 0.4;
@@ -373,7 +394,7 @@ function drawButton(
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.shadowColor = borderColor;
-  ctx.shadowBlur = 4 * highlightOpacity;
+  ctx.shadowBlur = 0;
   ctx.beginPath();
   ctx.roundRect(bx, by, bw, bh, boxRadius);
   ctx.stroke();
@@ -390,7 +411,7 @@ function drawButton(
 
 function drawBackButton(state: GameState): void {
   const highlight = state.buttonHighlightOpacity?.['back'] || 0;
-  drawButton('< Back', 10, 10, 70, 35, highlight);
+  drawButton('< Back', 20, 10, 85, 35, highlight);
 }
 
 export function render(state: GameState): void {
@@ -451,44 +472,41 @@ function renderMainMenu(state: GameState): void {
   const textSize = fontSize(40);
   const boxPaddingX = x(20);
   const boxPaddingY = y(8);
-  const boxRadius = 30;
 
   for (let i = 0; i < menuItems.length; i++) {
-    const textColor = '#b4b4b4';
-    let boxOpacity = 0.6;
+    const highlightOpacity = state.menuHighlightOpacity[i] || 0;
 
-    // On desktop, show selection highlighting; on mobile, use touch highlight
-    if (isMobile()) {
-      // Interpolate opacity based on touch highlight
-      const highlightOpacity = state.menuHighlightOpacity[i] || 0;
-      boxOpacity = 0.6 + highlightOpacity * 0.4; // 0.6 -> 1.0
-    } else if (i === state.menuSelectedIndex) {
-      boxOpacity = 0.8;
-    }
-
-    const boxColor = `rgba(80, 50, 120, ${boxOpacity})`;
-
-    // Measure text width for box sizing
+    // Measure text width for box sizing (text already includes mobile boost via fontSize)
     ctx.font = `${textSize}px sans-serif`;
     const textWidth = ctx.measureText(menuItems[i]).width;
     const boxWidth = textWidth + boxPaddingX * 2;
     const boxHeight = textSize + boxPaddingY * 2;
     const boxX = centerX - boxWidth / 2;
     const boxY = menuY[i] - boxPaddingY;
+    const pillRadius = Math.min(boxHeight / 2, 20 * scale.mobileBoost);
 
-    // Draw rounded purple border with smooth edges
-    ctx.strokeStyle = boxColor;
-    ctx.lineWidth = 10;
+    // Border opacity: base 0.6, highlighted up to 1.0
+    const borderOpacity = 0.6 + highlightOpacity * 0.4;
+    const borderColor = `rgba(80, 50, 120, ${borderOpacity})`;
+
+    // Draw rounded purple border (matching drawButton style)
+    ctx.strokeStyle = borderColor;
+    ctx.lineWidth = 6;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    ctx.shadowColor = boxColor;
-    ctx.shadowBlur = 4 * (state.menuHighlightOpacity[i] || 0); // Glow when pressed
+    ctx.shadowColor = borderColor;
+    ctx.shadowBlur = 0;
     ctx.beginPath();
-    ctx.roundRect(boxX, boxY, boxWidth, boxHeight, boxRadius);
+    ctx.roundRect(boxX, boxY, boxWidth, boxHeight, pillRadius);
     ctx.stroke();
     ctx.shadowBlur = 0;
 
-    drawText(menuItems[i], centerX, menuY[i], textColor, textSize, true);
+    // Button text (centered vertically like drawButton)
+    ctx.font = `${textSize}px sans-serif`;
+    ctx.fillStyle = '#b4b4b4';
+    ctx.textBaseline = 'middle';
+    const measuredWidth = ctx.measureText(menuItems[i]).width;
+    ctx.fillText(menuItems[i], boxX + (boxWidth - measuredWidth) / 2, boxY + boxHeight / 2);
   }
 
   // Instructions
@@ -637,15 +655,16 @@ function renderLobbyWaiting(state: GameState): void {
     yPos += y(28);
   }
 
-  // Buttons
+  // Buttons - extra spacing on mobile
+  const buttonSpacing = 10 + (scale.mobileBoost - 1) * 40;
   const readyText = (getLocalPlayer(state)?.state === PlayerState.READY) ? 'Not Ready' : 'Ready';
   const readyHighlight = state.buttonHighlightOpacity?.['ready'] || 0;
-  drawButton(readyText, REFERENCE_WIDTH / 2 - 110, 340, 100, 40, readyHighlight);
+  drawButton(readyText, REFERENCE_WIDTH / 2 - 100 - buttonSpacing, 340, 100, 40, readyHighlight);
 
   // Start button (host only)
   if (state.isHost) {
     const startHighlight = state.buttonHighlightOpacity?.['start'] || 0;
-    drawButton('Start', REFERENCE_WIDTH / 2 + 10, 340, 100, 40, startHighlight);
+    drawButton('Start', REFERENCE_WIDTH / 2 + buttonSpacing, 340, 100, 40, startHighlight);
 
     const readyCount = getReadyCount(state);
     if (readyCount < MIN_PLAYERS) {
@@ -666,9 +685,9 @@ function renderGame(state: GameState): void {
 
   // Lives (top-left)
   if (localPlayer && tintedHeartCanvas) {
-    const heartSize = y(20);
-    const heartSpacing = x(5);
-    const startX = 30;
+    const heartSize = 20 * uiScale();
+    const heartSpacing = 5 * uiScale();
+    const startX = 30 * scale.mobileBoost;
     const startY = y(20);
 
     for (let i = 0; i < localPlayer.lives; i++) {
@@ -743,8 +762,8 @@ function renderSpectatorView(state: GameState): void {
   if (otherPlayers.length === 0) {
     drawText('Waiting for players...', centerX, scale.windowHeight / 2, '#b4b4b4', fontSize(30), true);
   } else if (circleImage && activeCircleCanvas && grayCircleCanvas) {
-    // Use uniform scale to ensure circles fit on narrow mobile screens
-    const uniformScale = scale.scale;
+    // Use uniform scale with mobile boost for circles
+    const uniformScale = uiScale();
     const arcRadius = 150 * uniformScale;
     const arcCenterY = y(280);
     const arcStartAngle = -Math.PI * 0.4;
@@ -837,9 +856,9 @@ function renderSpectatorView(state: GameState): void {
 
   // Local player lives (top-left) - matching renderGame
   if (localPlayer && tintedHeartCanvas) {
-    const heartSize = y(20);
-    const heartSpacing = x(5);
-    const startX = 30;
+    const heartSize = 20 * uiScale();
+    const heartSpacing = 5 * uiScale();
+    const startX = 30 * scale.mobileBoost;
     const startY = y(20);
 
     for (let i = 0; i < localPlayer.lives; i++) {

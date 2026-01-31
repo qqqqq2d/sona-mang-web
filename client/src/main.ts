@@ -63,6 +63,7 @@ function update(deltaTime: number): void {
   updateWrongAnswerFlash(deltaTime);
   updateCorrectAnswerFlash(deltaTime);
   updateTimeoutFlash(deltaTime);
+  updateButtonHighlights(deltaTime);
 
   // Handle pending sounds
   if (state.pendingCorrectSound) {
@@ -125,6 +126,32 @@ function updateTimeoutFlash(deltaTime: number): void {
       state.timeoutOpacity = 0;
       state.timeoutFlash = false;
       state.timeoutOpacityUp = true;
+    }
+  }
+}
+
+function updateButtonHighlights(deltaTime: number): void {
+  const speed = deltaTime * 8; // Fast fade
+
+  // Update menu item highlights
+  for (let i = 0; i < state.menuHighlightOpacity.length; i++) {
+    const isActive = i === state.menuHoveredIndex || i === state.menuPressedIndex;
+    if (isActive) {
+      state.menuHighlightOpacity[i] = Math.min(1, state.menuHighlightOpacity[i] + speed);
+    } else {
+      state.menuHighlightOpacity[i] = Math.max(0, state.menuHighlightOpacity[i] - speed);
+    }
+  }
+
+  // Update button highlights
+  const allButtons = ['back', 'continue', 'create', 'refresh', 'ready', 'start', 'failed'];
+  for (const button of allButtons) {
+    const isActive = button === state.hoveredButton || button === state.pressedButton;
+    const current = state.buttonHighlightOpacity[button] || 0;
+    if (isActive) {
+      state.buttonHighlightOpacity[button] = Math.min(1, current + speed);
+    } else {
+      state.buttonHighlightOpacity[button] = Math.max(0, current - speed);
     }
   }
 }

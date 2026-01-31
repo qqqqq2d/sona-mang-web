@@ -12,21 +12,38 @@ const isMobile = (): boolean => {
   return window.matchMedia('(pointer: coarse)').matches;
 };
 
-// Menu item hitbox detection - must match renderer box dimensions
-function getMenuItemAtPoint(refX: number, refY: number): number {
+// Offscreen canvas for text measurement
+let measureCanvas: HTMLCanvasElement | null = null;
+let measureCtx: CanvasRenderingContext2D | null = null;
+
+function getMeasureContext(): CanvasRenderingContext2D | null {
+  if (!measureCtx) {
+    measureCanvas = document.createElement('canvas');
+    measureCtx = measureCanvas.getContext('2d');
+  }
+  return measureCtx;
+}
+
+// Menu item hitbox detection - must match renderer box dimensions exactly
+function getMenuItemAtPoint(refX: number, refY: number, scale: number): number {
+  const ctx = getMeasureContext();
+  if (!ctx) return -1;
+
   const centerX = 320; // REFERENCE_WIDTH / 2
   const menuPositions = [220, 300]; // Must match renderer menuY values
+  const menuItems = ['CREATE GAME', 'JOIN GAME'];
   const boxPaddingX = 20;
   const boxPaddingY = 8;
-  const textHeight = 40;
-  const boxWidths = [240, 200]; // Approximate text widths for "CREATE GAME" and "JOIN GAME"
+  const textSize = Math.round(40 * scale);
+
+  ctx.font = `${textSize}px sans-serif`;
 
   for (let i = 0; i < menuPositions.length; i++) {
-    const itemY = menuPositions[i];
-    const boxWidth = boxWidths[i] + boxPaddingX * 2;
-    const boxHeight = textHeight + boxPaddingY * 2;
+    const textWidth = ctx.measureText(menuItems[i]).width / scale;
+    const boxWidth = textWidth + boxPaddingX * 2;
+    const boxHeight = 40 + boxPaddingY * 2;
     const boxX = centerX - boxWidth / 2;
-    const boxY = itemY - boxPaddingY;
+    const boxY = menuPositions[i] - boxPaddingY;
 
     if (refX >= boxX && refX <= boxX + boxWidth &&
         refY >= boxY && refY <= boxY + boxHeight) {
@@ -40,21 +57,20 @@ function getMenuItemAtPoint(refX: number, refY: number): number {
 // Must match the button positions in renderer.ts
 const BUTTON_DEFS: { [phase: string]: { [name: string]: [number, number, number, number] } } = {
   [ClientPhase.SERVER_CONNECT]: {
-    'back': [10, 10, 70, 35],
+    'back': [20, 10, 85, 35],
     'continue': [320 - 60, 260, 120, 40],
   },
   [ClientPhase.LOBBY_CREATE]: {
-    'back': [10, 10, 70, 35],
+    'back': [20, 10, 85, 35],
     'create': [320 - 60, 260, 120, 40],
   },
   [ClientPhase.LOBBY_JOIN]: {
-    'back': [10, 10, 70, 35],
+    'back': [20, 10, 85, 35],
     'refresh': [640 - 90, 10, 80, 35],
   },
   [ClientPhase.LOBBY_WAITING]: {
-    'back': [10, 10, 70, 35],
-    'ready': [320 - 110, 340, 100, 40],
-    'start': [320 + 10, 340, 100, 40],
+    'back': [20, 10, 85, 35],
+    // ready and start buttons use dynamic positioning, handled separately
   },
   [ClientPhase.GAME_OVER]: {
     'continue': [320 - 80, 360, 160, 45],
@@ -127,6 +143,7 @@ export function setupInputHandlers(state: GameState): void {
 
   // Handle Enter key on mobile keyboard
   hiddenInput.addEventListener('keydown', (e) => {
+    if (e.repeat) return;
     if (e.key === 'Enter') {
       e.preventDefault();
       if (state.phase === ClientPhase.PLAYING && isMyTurn(state) && state.localInput.length > 0) {
@@ -147,10 +164,11 @@ export function setupInputHandlers(state: GameState): void {
     const touchY = touch.clientY - rect.top;
     const refX = (touchX / rect.width) * REFERENCE_WIDTH;
     const refY = (touchY / rect.height) * REFERENCE_HEIGHT;
+    const scale = Math.min(rect.width / REFERENCE_WIDTH, rect.height / REFERENCE_HEIGHT);
 
     // Check menu items (main menu only)
     if (state.phase === ClientPhase.MAIN_MENU) {
-      state.menuPressedIndex = getMenuItemAtPoint(refX, refY);
+      state.menuPressedIndex = getMenuItemAtPoint(refX, refY, scale);
     }
 
     // Check buttons
@@ -179,10 +197,8 @@ export function setupInputHandlers(state: GameState): void {
     state.pressedButton = null;
   });
 
-  // Mouse move for menu hover selection
+  // Mouse move for hover detection
   canvas.addEventListener('mousemove', (e) => {
-    if (state.phase !== ClientPhase.MAIN_MENU) return;
-
     const rect = canvas.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
@@ -190,15 +206,54 @@ export function setupInputHandlers(state: GameState): void {
     // Convert to reference coordinates
     const refX = (mouseX / rect.width) * REFERENCE_WIDTH;
     const refY = (mouseY / rect.height) * REFERENCE_HEIGHT;
+    const scale = Math.min(rect.width / REFERENCE_WIDTH, rect.height / REFERENCE_HEIGHT);
 
-    const newSelection = getMenuItemAtPoint(refX, refY);
+    // Main menu hover
+    if (state.phase === ClientPhase.MAIN_MENU) {
+      const newSelection = getMenuItemAtPoint(refX, refY, scale);
+      state.menuHoveredIndex = newSelection;
 
-    if (newSelection !== -1 && state.menuSelectedIndex !== newSelection) {
-      state.prevSelectedIndex = state.menuSelectedIndex;
-      state.menuSelectedIndex = newSelection;
-      state.menuTransitionTime = 0;
-      playSound('selection', 0.3);
+      if (newSelection !== -1 && state.menuSelectedIndex !== newSelection) {
+        state.prevSelectedIndex = state.menuSelectedIndex;
+        state.menuSelectedIndex = newSelection;
+        state.menuTransitionTime = 0;
+        playSound('selection', 0.3);
+      }
+    } else {
+      state.menuHoveredIndex = -1;
     }
+
+    // Button hover (all phases)
+    let button = getButtonAtPoint(state.phase, refX, refY);
+
+    // Check dynamic lobby waiting buttons
+    if (state.phase === ClientPhase.LOBBY_WAITING && !button) {
+      const centerX = REFERENCE_WIDTH / 2;
+      const aspectRatio = rect.width / rect.height;
+      const mobileBoost = aspectRatio < 1.0 ? 1.0 + (1.0 - aspectRatio) * 0.4 : 1.0;
+      const buttonSpacing = 10 + (mobileBoost - 1) * 40;
+
+      if (refX >= centerX - 100 - buttonSpacing && refX <= centerX - buttonSpacing &&
+          refY >= 340 && refY <= 380) {
+        button = 'ready';
+      } else if (state.isHost && refX >= centerX + buttonSpacing && refX <= centerX + buttonSpacing + 100 &&
+          refY >= 340 && refY <= 380) {
+        button = 'start';
+      }
+    }
+
+    if (button !== state.hoveredButton) {
+      state.hoveredButton = button;
+      if (button !== null) {
+        playSound('selection', 0.3);
+      }
+    }
+  });
+
+  // Mouse leave - clear hover state
+  canvas.addEventListener('mouseleave', () => {
+    state.menuHoveredIndex = -1;
+    state.hoveredButton = null;
   });
 }
 
@@ -247,12 +302,13 @@ function handleTapAt(state: GameState, tapX: number, tapY: number, winWidth: num
   // Convert tap position to reference coordinates
   const scaleX = winWidth / REFERENCE_WIDTH;
   const scaleY = winHeight / REFERENCE_HEIGHT;
+  const scale = Math.min(scaleX, scaleY);
   const refX = tapX / scaleX;
   const refY = tapY / scaleY;
 
   switch (state.phase) {
     case ClientPhase.MAIN_MENU:
-      handleMainMenuTap(state, refX, refY);
+      handleMainMenuTap(state, refX, refY, scale);
       break;
     case ClientPhase.SERVER_CONNECT:
       handleServerConnectTap(state, refX, refY);
@@ -276,8 +332,8 @@ function handleTapAt(state: GameState, tapX: number, tapY: number, winWidth: num
   }
 }
 
-function handleMainMenuTap(state: GameState, refX: number, refY: number): void {
-  const menuItem = getMenuItemAtPoint(refX, refY);
+function handleMainMenuTap(state: GameState, refX: number, refY: number, scale: number): void {
+  const menuItem = getMenuItemAtPoint(refX, refY, scale);
   if (menuItem !== -1) {
     playSound('selected', 0.5);
     state.joiningGame = (menuItem === 1);
@@ -319,7 +375,7 @@ function handleServerConnectTap(state: GameState, refX: number, refY: number): v
   const centerX = REFERENCE_WIDTH / 2;
 
   // Back button (top-left) - matches drawButton('< Back', 10, 10, 70, 35)
-  if (inTapArea(refX, refY, 10, 10, 70, 35)) {
+  if (inTapArea(refX, refY, 20, 10, 85, 35)) {
     state.phase = ClientPhase.MAIN_MENU;
     playSound('selected', 0.5);
     return;
@@ -349,7 +405,7 @@ function handleLobbyCreateTap(state: GameState, refX: number, refY: number): voi
   const centerX = REFERENCE_WIDTH / 2;
 
   // Back button (top-left) - matches drawButton('< Back', 10, 10, 70, 35)
-  if (inTapArea(refX, refY, 10, 10, 70, 35)) {
+  if (inTapArea(refX, refY, 20, 10, 85, 35)) {
     network.disconnect();
     state.phase = ClientPhase.MAIN_MENU;
     playSound('selected', 0.5);
@@ -378,7 +434,7 @@ function handleLobbyCreateTap(state: GameState, refX: number, refY: number): voi
 
 function handleLobbyJoinTap(state: GameState, refX: number, refY: number): void {
   // Back button (top-left) - matches drawButton('< Back', 10, 10, 70, 35)
-  if (inTapArea(refX, refY, 10, 10, 70, 35)) {
+  if (inTapArea(refX, refY, 20, 10, 85, 35)) {
     network.disconnect();
     state.phase = ClientPhase.MAIN_MENU;
     playSound('selected', 0.5);
@@ -411,8 +467,13 @@ function handleLobbyJoinTap(state: GameState, refX: number, refY: number): void 
 function handleLobbyWaitingTap(state: GameState, refX: number, refY: number): void {
   const centerX = REFERENCE_WIDTH / 2;
 
-  // Back button (top-left) - matches drawButton('< Back', 10, 10, 70, 35)
-  if (inTapArea(refX, refY, 10, 10, 70, 35)) {
+  // Calculate mobile boost for button spacing (must match renderer)
+  const aspectRatio = window.innerWidth / window.innerHeight;
+  const mobileBoost = aspectRatio < 1.0 ? 1.0 + (1.0 - aspectRatio) * 0.4 : 1.0;
+  const buttonSpacing = 10 + (mobileBoost - 1) * 40;
+
+  // Back button (top-left) - matches drawButton('< Back', 20, 10, 85, 35)
+  if (inTapArea(refX, refY, 20, 10, 85, 35)) {
     network.disconnect();
     state.phase = ClientPhase.MAIN_MENU;
     state.players = [];
@@ -420,8 +481,8 @@ function handleLobbyWaitingTap(state: GameState, refX: number, refY: number): vo
     return;
   }
 
-  // Ready button - matches drawButton(readyText, centerX - 110, 340, 100, 40)
-  if (inTapArea(refX, refY, centerX - 110, 340, 100, 40)) {
+  // Ready button - dynamic position based on mobile boost
+  if (inTapArea(refX, refY, centerX - 100 - buttonSpacing, 340, 100, 40)) {
     const local = getLocalPlayer(state);
     if (local) {
       const newReady = local.state !== PlayerState.READY;
@@ -431,8 +492,8 @@ function handleLobbyWaitingTap(state: GameState, refX: number, refY: number): vo
     return;
   }
 
-  // Start button (host only) - matches drawButton('Start', centerX + 10, 340, 100, 40)
-  if (state.isHost && inTapArea(refX, refY, centerX + 10, 340, 100, 40)) {
+  // Start button (host only) - dynamic position based on mobile boost
+  if (state.isHost && inTapArea(refX, refY, centerX + buttonSpacing, 340, 100, 40)) {
     const readyCount = getReadyCount(state);
     if (readyCount >= MIN_PLAYERS) {
       network.startGame();
@@ -506,6 +567,9 @@ export function blurHiddenInput(): void {
 }
 
 function handleKeyDown(e: KeyboardEvent, state: GameState): void {
+  // Ignore key repeats (holding down a key), except for Backspace
+  if (e.repeat && e.key !== 'Backspace') return;
+
   // Skip text input handling if the hidden input has focus (it handles its own input)
   const hiddenInputFocused = document.activeElement === hiddenInput;
 
