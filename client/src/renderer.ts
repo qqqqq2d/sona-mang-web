@@ -727,6 +727,26 @@ function renderGame(state: GameState): void {
   const combo = state.displayCombo || state.currentCombo;
   drawScaledText(combo, centerX, y(120), '#ffffff', fontSize(80), comboScale);
 
+  // Circular sector timer between combo and input
+  const timerRadius = 20 * scale.scale;
+  const timerY = y(185);
+  const timeRatio = Math.max(0, state.turnTimer / state.turnDuration);
+  const startAngle = -Math.PI / 2; // Start from top
+  const endAngle = startAngle + timeRatio * Math.PI * 2;
+
+  // Opacity: 0 at 10s, 1 at 1s
+  const timerOpacity = Math.max(0, Math.min(1, (10 - state.turnTimer) / 9));
+
+  // Draw sector
+  if (timerOpacity > 0) {
+    ctx.beginPath();
+    ctx.moveTo(centerX, timerY);
+    ctx.arc(centerX, timerY, timerRadius, startAngle, endAngle);
+    ctx.closePath();
+    ctx.fillStyle = `rgba(255, 255, 255, ${timerOpacity})`;
+    ctx.fill();
+  }
+
   // Player input
   if (isMyTurn(state)) {
     drawInputWithComboHighlight(state.localInput, state.currentCombo, centerX, y(220), fontSize(60));
@@ -770,6 +790,26 @@ function renderSpectatorView(state: GameState): void {
   if (SHOW_TIMER) {
     const timerInt = Math.ceil(state.turnTimer);
     drawText(timerInt.toString(), centerX, scale.windowHeight - 80, 'rgba(255, 255, 255, 0.4)', fontSize(30), true);
+  }
+
+  // Circular sector timer between combo and input
+  const timerRadius = 20 * scale.scale;
+  const timerY = y(185);
+  const timeRatio = Math.max(0, state.turnTimer / state.turnDuration);
+  const startAngle = -Math.PI / 2; // Start from top
+  const endAngle = startAngle + timeRatio * Math.PI * 2;
+
+  // Opacity: 0 at 10s, 1 at 1s
+  const timerOpacity = Math.max(0, Math.min(1, (10 - state.turnTimer) / 9));
+
+  // Draw sector
+  if (timerOpacity > 0) {
+    ctx.beginPath();
+    ctx.moveTo(centerX, timerY);
+    ctx.arc(centerX, timerY, timerRadius, startAngle, endAngle);
+    ctx.closePath();
+    ctx.fillStyle = `rgba(255, 255, 255, ${timerOpacity})`;
+    ctx.fill();
   }
 
   // Other players in arc
@@ -939,9 +979,6 @@ function renderGameOver(state: GameState): void {
     const winnerText = `${winner.name} WINS!`;
     drawText(winnerText, centerX, y(130), '#ffff00', fontSize(40), true);
   }
-
-  // Scores
-  drawText('Final Scores:', centerX, y(200), '#b4b4b4', fontSize(22), true);
 
   let yPos = y(235);
   for (const player of state.players) {
