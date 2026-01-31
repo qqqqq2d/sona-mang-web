@@ -64,6 +64,7 @@ function update(deltaTime: number): void {
   updateCorrectAnswerFlash(deltaTime);
   updateTimeoutFlash(deltaTime);
   updateButtonHighlights(deltaTime);
+  updateViewTransition(deltaTime);
 
   // Handle pending sounds
   if (state.pendingCorrectSound) {
@@ -152,6 +153,54 @@ function updateButtonHighlights(deltaTime: number): void {
       state.buttonHighlightOpacity[button] = Math.min(1, current + speed);
     } else {
       state.buttonHighlightOpacity[button] = Math.max(0, current - speed);
+    }
+  }
+}
+
+function updateViewTransition(deltaTime: number): void {
+  const isGamePhase = state.phase === ClientPhase.PLAYING || state.phase === ClientPhase.SPECTATING;
+  const wasGamePhase = state.previousGamePhase === ClientPhase.PLAYING || state.previousGamePhase === ClientPhase.SPECTATING;
+
+  // Detect transition between PLAYING and SPECTATING
+  if (isGamePhase && wasGamePhase && state.phase !== state.previousGamePhase && !state.viewTransitionActive) {
+    // Start fade out transition, keep rendering old phase
+    state.viewTransitionActive = true;
+    state.viewTransitionFadingOut = true;
+    state.pendingPhase = state.phase;
+    state.renderPhase = state.previousGamePhase;
+  }
+
+  // Update previous phase
+  state.previousGamePhase = state.phase;
+
+  // Set renderPhase and displayCombo when not transitioning
+  if (!state.viewTransitionActive) {
+    state.renderPhase = state.phase;
+    state.displayCombo = state.currentCombo;
+  }
+
+  // Animate transition
+  if (state.viewTransitionActive) {
+    const speed = deltaTime * 1.5; // Transition speed
+
+    if (state.viewTransitionFadingOut) {
+      // Fade to black
+      state.viewTransitionOpacity += speed;
+      if (state.viewTransitionOpacity >= 1) {
+        state.viewTransitionOpacity = 1;
+        state.viewTransitionFadingOut = false;
+        // Switch to new view and combo at peak black
+        state.renderPhase = state.pendingPhase;
+        state.displayCombo = state.currentCombo;
+      }
+    } else {
+      // Fade from black
+      state.viewTransitionOpacity -= speed;
+      if (state.viewTransitionOpacity <= 0) {
+        state.viewTransitionOpacity = 0;
+        state.viewTransitionActive = false;
+        state.pendingPhase = null;
+      }
     }
   }
 }

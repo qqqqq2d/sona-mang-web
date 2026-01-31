@@ -366,6 +366,12 @@ function drawFlashOverlay(color: string, opacity: number): void {
   ctx.fillRect(0, 0, scale.windowWidth, scale.windowHeight);
 }
 
+function drawViewTransition(state: GameState): void {
+  if (state.viewTransitionOpacity <= 0) return;
+  ctx.fillStyle = `rgba(0, 0, 0, ${state.viewTransitionOpacity})`;
+  ctx.fillRect(0, 0, scale.windowWidth, scale.windowHeight);
+}
+
 function drawButton(
   text: string,
   refX: number,
@@ -445,11 +451,14 @@ export function render(state: GameState): void {
       break;
 
     case ClientPhase.PLAYING:
-      renderGame(state);
-      break;
-
     case ClientPhase.SPECTATING:
-      renderSpectatorView(state);
+      // Use renderPhase during transitions to show old view until fade completes
+      const viewPhase = state.renderPhase || state.phase;
+      if (viewPhase === ClientPhase.PLAYING) {
+        renderGame(state);
+      } else {
+        renderSpectatorView(state);
+      }
       break;
 
     case ClientPhase.GAME_OVER:
@@ -713,9 +722,10 @@ function renderGame(state: GameState): void {
     drawText(timerText, scale.windowWidth - x(40), scale.windowHeight - y(65), 'rgba(255, 255, 255, 0.4)', fontSize(30), true);
   }
 
-  // Current combo (centered, large)
+  // Current combo (centered, large) - use displayCombo during transitions
   const comboScale = ENABLE_COMBO_PULSING ? 1.0 + 0.04 * Math.sin(state.animTime * 2.0) : 1.0;
-  drawScaledText(state.currentCombo, centerX, y(120), '#ffffff', fontSize(80), comboScale);
+  const combo = state.displayCombo || state.currentCombo;
+  drawScaledText(combo, centerX, y(120), '#ffffff', fontSize(80), comboScale);
 
   // Player input
   if (isMyTurn(state)) {
@@ -738,6 +748,9 @@ function renderGame(state: GameState): void {
   if (state.timeoutOpacity > 0) {
     drawFlashOverlay('rgba(180, 0, 0, 1)', state.timeoutOpacity);
   }
+
+  // View transition overlay
+  drawViewTransition(state);
 }
 
 function renderSpectatorView(state: GameState): void {
@@ -748,9 +761,10 @@ function renderSpectatorView(state: GameState): void {
   const centerX = scale.windowWidth / 2;
   const localPlayer = getLocalPlayer(state);
 
-  // Combo at top (SDL3 uses shadow offset 4 for combo text)
+  // Combo at top (SDL3 uses shadow offset 4 for combo text) - use displayCombo during transitions
   const comboScale = ENABLE_COMBO_PULSING ? 1.0 + 0.04 * Math.sin(state.animTime * 2.0) : 1.0;
-  drawScaledText(state.currentCombo, centerX, y(100), '#ffffff', fontSize(80), comboScale, true, 4);
+  const combo = state.displayCombo || state.currentCombo;
+  drawScaledText(combo, centerX, y(100), '#ffffff', fontSize(80), comboScale, true, 4);
 
   // Timer at bottom
   if (SHOW_TIMER) {
@@ -878,6 +892,9 @@ function renderSpectatorView(state: GameState): void {
   if (state.timeoutOpacity > 0) {
     drawFlashOverlay('rgba(180, 0, 0, 1)', state.timeoutOpacity);
   }
+
+  // View transition overlay
+  drawViewTransition(state);
 }
 
 function renderGameOver(state: GameState): void {

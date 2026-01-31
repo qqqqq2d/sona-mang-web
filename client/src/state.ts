@@ -83,6 +83,15 @@ export interface GameState {
   // Game over
   failedCombos: FailedComboInfo[];
   showFailedCombos: boolean;
+
+  // View transition (between PLAYING and SPECTATING)
+  viewTransitionOpacity: number;
+  viewTransitionFadingOut: boolean;
+  viewTransitionActive: boolean;
+  previousGamePhase: ClientPhase | null;
+  pendingPhase: ClientPhase | null;
+  renderPhase: ClientPhase | null;
+  displayCombo: string;
 }
 
 export function createInitialState(): GameState {
@@ -137,6 +146,14 @@ export function createInitialState(): GameState {
 
     failedCombos: [],
     showFailedCombos: false,
+
+    viewTransitionOpacity: 0,
+    viewTransitionFadingOut: false,
+    viewTransitionActive: false,
+    previousGamePhase: null,
+    pendingPhase: null,
+    renderPhase: null,
+    displayCombo: '',
   };
 }
 
