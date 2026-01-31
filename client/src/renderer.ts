@@ -6,7 +6,7 @@ import {
   isMyTurn,
   getReadyCount,
 } from './state';
-import { PlayerState, PlayerInfo, MIN_PLAYERS, MAX_PLAYERS, GameInfo } from './protocol';
+import { PlayerState, PlayerInfo, MIN_PLAYERS, MAX_PLAYERS, GameInfo, DEFAULT_LIVES } from './protocol';
 
 // Constants
 const ENABLE_COMBO_PULSING = true;
@@ -411,7 +411,9 @@ function drawButton(
 
 function drawBackButton(state: GameState): void {
   const highlight = state.buttonHighlightOpacity?.['back'] || 0;
-  drawButton('< Back', 20, 10, 85, 35, highlight);
+  // Move left on PC (mobileBoost ~= 1), keep at 20 on mobile
+  const backX = scale.mobileBoost > 1.05 ? 20 : 10;
+  drawButton('< Back', backX, 10, 85, 35, highlight);
 }
 
 export function render(state: GameState): void {
@@ -683,11 +685,11 @@ function renderGame(state: GameState): void {
   const centerX = scale.windowWidth / 2;
   const localPlayer = getLocalPlayer(state);
 
-  // Lives (top-left)
+  // Lives (top-left) - rightmost disappears first, leftmost is last life
   if (localPlayer && tintedHeartCanvas) {
-    const heartSize = 20 * uiScale();
-    const heartSpacing = 5 * uiScale();
-    const startX = 30 * scale.mobileBoost;
+    const heartSize = 20 * scale.scale;
+    const heartSpacing = 5 * scale.scale;
+    const startX = x(scale.mobileBoost > 1.05 ? 20 : 10);
     const startY = y(20);
 
     for (let i = 0; i < localPlayer.lives; i++) {
@@ -772,15 +774,6 @@ function renderSpectatorView(state: GameState): void {
     const normalSize = 60 * uniformScale;
     const activeSize = 75 * uniformScale;
 
-    // Heart pulsing effect (matching SDL3)
-    const cycleDuration = 2.0;
-    const pulseDuration = 0.3;
-    const cycleTime = state.animTime % cycleDuration;
-    let heartPulseScale = 1.0;
-    if (cycleTime < pulseDuration) {
-      heartPulseScale = 1.0 + 0.1 * Math.sin((cycleTime / pulseDuration) * Math.PI);
-    }
-
     otherPlayers.forEach((player, i) => {
       const isCurrentTurn = player.id === state.currentTurnPlayerId;
 
@@ -823,7 +816,7 @@ function renderSpectatorView(state: GameState): void {
       // Lives (hearts above circle) with pulsing - matching SDL3
       if (tintedHeartCanvas && player.lives > 0) {
         const baseHeartSize = isCurrentTurn ? 16 : 14;
-        const heartSize = baseHeartSize * heartPulseScale;
+        const heartSize = baseHeartSize;
         const heartSpacing = 2;
         const totalWidth = player.lives * heartSize + (player.lives - 1) * heartSpacing;
         const heartsX = circleX - totalWidth / 2;
@@ -854,11 +847,11 @@ function renderSpectatorView(state: GameState): void {
     });
   }
 
-  // Local player lives (top-left) - matching renderGame
+  // Local player lives (top-left) - rightmost disappears first, leftmost is last life
   if (localPlayer && tintedHeartCanvas) {
-    const heartSize = 20 * uiScale();
-    const heartSpacing = 5 * uiScale();
-    const startX = 30 * scale.mobileBoost;
+    const heartSize = 20 * scale.scale;
+    const heartSpacing = 5 * scale.scale;
+    const startX = x(scale.mobileBoost > 1.05 ? 20 : 10);
     const startY = y(20);
 
     for (let i = 0; i < localPlayer.lives; i++) {

@@ -57,23 +57,25 @@ function getMenuItemAtPoint(refX: number, refY: number, scale: number): number {
 // Must match the button positions in renderer.ts
 const BUTTON_DEFS: { [phase: string]: { [name: string]: [number, number, number, number] } } = {
   [ClientPhase.SERVER_CONNECT]: {
-    'back': [20, 10, 85, 35],
+    'back': [10, 10, 95, 35],
     'continue': [320 - 60, 260, 120, 40],
   },
   [ClientPhase.LOBBY_CREATE]: {
-    'back': [20, 10, 85, 35],
+    'back': [10, 10, 95, 35],
     'create': [320 - 60, 260, 120, 40],
   },
   [ClientPhase.LOBBY_JOIN]: {
-    'back': [20, 10, 85, 35],
+    'back': [10, 10, 95, 35],
     'refresh': [640 - 90, 10, 80, 35],
   },
   [ClientPhase.LOBBY_WAITING]: {
-    'back': [20, 10, 85, 35],
+    'back': [10, 10, 95, 35],
     // ready and start buttons use dynamic positioning, handled separately
   },
   [ClientPhase.GAME_OVER]: {
     'continue': [320 - 80, 360, 160, 45],
+    'failed': [320 - 100, 420, 200, 40],
+    // 'back' button in failed combos view is handled dynamically
   },
 };
 
@@ -242,6 +244,24 @@ export function setupInputHandlers(state: GameState): void {
       }
     }
 
+    // Handle game over buttons based on showFailedCombos state
+    if (state.phase === ClientPhase.GAME_OVER) {
+      if (state.showFailedCombos) {
+        // Only back button visible in failed combos view
+        button = null;
+        const centerX = REFERENCE_WIDTH / 2;
+        if (refX >= centerX - 60 && refX <= centerX + 60 &&
+            refY >= 400 && refY <= 440) {
+          button = 'back';
+        }
+      } else {
+        // Hide 'failed' button if no failed combos
+        if (button === 'failed' && state.failedCombos.length === 0) {
+          button = null;
+        }
+      }
+    }
+
     if (button !== state.hoveredButton) {
       state.hoveredButton = button;
       if (button !== null) {
@@ -375,7 +395,7 @@ function handleServerConnectTap(state: GameState, refX: number, refY: number): v
   const centerX = REFERENCE_WIDTH / 2;
 
   // Back button (top-left) - matches drawButton('< Back', 10, 10, 70, 35)
-  if (inTapArea(refX, refY, 20, 10, 85, 35)) {
+  if (inTapArea(refX, refY, 10, 10, 95, 35)) {
     state.phase = ClientPhase.MAIN_MENU;
     playSound('selected', 0.5);
     return;
@@ -405,7 +425,7 @@ function handleLobbyCreateTap(state: GameState, refX: number, refY: number): voi
   const centerX = REFERENCE_WIDTH / 2;
 
   // Back button (top-left) - matches drawButton('< Back', 10, 10, 70, 35)
-  if (inTapArea(refX, refY, 20, 10, 85, 35)) {
+  if (inTapArea(refX, refY, 10, 10, 95, 35)) {
     network.disconnect();
     state.phase = ClientPhase.MAIN_MENU;
     playSound('selected', 0.5);
@@ -434,7 +454,7 @@ function handleLobbyCreateTap(state: GameState, refX: number, refY: number): voi
 
 function handleLobbyJoinTap(state: GameState, refX: number, refY: number): void {
   // Back button (top-left) - matches drawButton('< Back', 10, 10, 70, 35)
-  if (inTapArea(refX, refY, 20, 10, 85, 35)) {
+  if (inTapArea(refX, refY, 10, 10, 95, 35)) {
     network.disconnect();
     state.phase = ClientPhase.MAIN_MENU;
     playSound('selected', 0.5);
@@ -473,7 +493,7 @@ function handleLobbyWaitingTap(state: GameState, refX: number, refY: number): vo
   const buttonSpacing = 10 + (mobileBoost - 1) * 40;
 
   // Back button (top-left) - matches drawButton('< Back', 20, 10, 85, 35)
-  if (inTapArea(refX, refY, 20, 10, 85, 35)) {
+  if (inTapArea(refX, refY, 10, 10, 95, 35)) {
     network.disconnect();
     state.phase = ClientPhase.MAIN_MENU;
     state.players = [];
