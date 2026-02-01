@@ -30,10 +30,10 @@ function getMenuItemAtPoint(refX: number, refY: number, scaleX: number, scaleY: 
   if (!ctx) return -1;
 
   const centerX = 320; // REFERENCE_WIDTH / 2
-  const menuPositions = [220, 300]; // Must match renderer menuY values
-  const menuItems = ['CREATE GAME', 'JOIN GAME'];
-  const boxPaddingX = 20;
-  const boxPaddingY = 8;
+  const menuPositions = [200, 260]; // Must match renderer menuY values: [y(200), y(260)]
+  const menuItems = ['ALUSTA', 'LIITU'];
+  const boxPaddingX = 16; // Must match renderer: x(16)
+  const boxPaddingY = 6;  // Must match renderer: y(6)
 
   // Calculate mobile boost to match renderer exactly
   const aspectRatio = scaleX / scaleY * (REFERENCE_WIDTH / REFERENCE_HEIGHT);
@@ -42,8 +42,8 @@ function getMenuItemAtPoint(refX: number, refY: number, scaleX: number, scaleY: 
   // Renderer uses scale = min(scaleX, scaleY) for font size
   const scale = Math.min(scaleX, scaleY);
 
-  // Match renderer's text size calculation: fontSize(40) = 40 * scale * mobileBoost
-  const textSize = Math.round(40 * scale * mobileBoost);
+  // Match renderer's text size calculation: fontSize(32) = 32 * scale * mobileBoost
+  const textSize = Math.round(32 * scale * mobileBoost);
 
   ctx.font = `${textSize}px sans-serif`;
 
@@ -52,7 +52,7 @@ function getMenuItemAtPoint(refX: number, refY: number, scaleX: number, scaleY: 
     const textWidth = ctx.measureText(menuItems[i]).width / scaleX;
     const boxWidth = textWidth + boxPaddingX * 2;
     // boxHeight: renderer uses textSize + boxPaddingY*2 in screen coords
-    // Convert to reference: (textSize + 8*scaleY*2) / scaleY = textSize/scaleY + 16
+    // Convert to reference: (textSize / scaleY) + boxPaddingY * 2
     const boxHeight = textSize / scaleY + boxPaddingY * 2;
     const boxX = centerX - boxWidth / 2;
     const boxY = menuPositions[i] - boxPaddingY;
@@ -86,7 +86,7 @@ const BUTTON_DEFS: { [phase: string]: { [name: string]: [number, number, number,
   },
   [ClientPhase.GAME_OVER]: {
     'continue': [320 - 80, 360, 160, 45],
-    'failed': [320 - 100, 420, 200, 40],
+    'failed': [320 - 70, 420, 140, 40],
     // 'back' button in failed combos view is handled dynamically
   },
 };
@@ -580,7 +580,7 @@ function handleGameOverTap(state: GameState, refX: number, refY: number): void {
   }
 
   // View Failed Combos button (only if there are failed combos)
-  if (state.failedCombos.length > 0 && inTapArea(refX, refY, centerX - 100, 420, 200, 40)) {
+  if (state.failedCombos.length > 0 && inTapArea(refX, refY, centerX - 70, 420, 140, 40)) {
     playSound('selected', 0.5);
     state.showFailedCombos = true;
     return;
@@ -740,26 +740,7 @@ function handleLobbyJoinInput(e: KeyboardEvent, state: GameState): void {
   if (e.key === 'Escape') {
     network.disconnect();
     state.phase = ClientPhase.MAIN_MENU;
-    return;
-  }
-
-  // Get games list
-  const gamesList = state.gamesList;
-
-  if (e.key === 'ArrowUp') {
-    state.menuSelectedIndex = Math.max(0, state.menuSelectedIndex - 1);
-    playSound('selection', 0.3);
-  } else if (e.key === 'ArrowDown') {
-    state.menuSelectedIndex = Math.min(gamesList.length - 1, state.menuSelectedIndex + 1);
-    playSound('selection', 0.3);
-  } else if (e.key === 'Enter' && gamesList.length > 0) {
-    const selectedGame = gamesList[state.menuSelectedIndex];
-    if (selectedGame) {
-      network.joinGame(selectedGame.id, state.playerName);
-      playSound('selected', 0.5);
-    }
   } else if (e.key === 'r' || e.key === 'R') {
-    // Refresh games list
     network.listGames();
   }
 }

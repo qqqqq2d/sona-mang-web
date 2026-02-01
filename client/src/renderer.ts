@@ -492,7 +492,7 @@ function drawBackButton(state: GameState): void {
   const highlight = state.buttonHighlightOpacity?.['back'] || 0;
   // Move left on PC (mobileBoost ~= 1), keep at 20 on mobile
   const backX = scale.mobileBoost > 1.05 ? 20 : 10;
-  drawButton('< Back', backX, 10, 85, 35, highlight);
+  drawButton('< Tagasi', backX, 10, 95, 35, highlight);
 }
 
 export function render(state: GameState): void {
@@ -551,11 +551,11 @@ function renderMainMenu(state: GameState): void {
   drawText('SÕNA MÄNG', centerX, y(80), '#ffffff', fontSize(80), true);
 
   // Menu options
-  const menuItems = ['CREATE GAME', 'JOIN GAME'];
-  const menuY = [y(220), y(300)];
-  const textSize = fontSize(40);
-  const boxPaddingX = x(20);
-  const boxPaddingY = y(8);
+  const menuItems = ['ALUSTA', 'LIITU'];
+  const menuY = [y(200), y(260)];
+  const textSize = fontSize(32);
+  const boxPaddingX = x(16);
+  const boxPaddingY = y(6);
 
   for (let i = 0; i < menuItems.length; i++) {
     const highlightOpacity = state.menuHighlightOpacity[i] || 0;
@@ -593,15 +593,6 @@ function renderMainMenu(state: GameState): void {
     ctx.fillText(menuItems[i], boxX + (boxWidth - measuredWidth) / 2, boxY + boxHeight / 2);
   }
 
-  // Instructions
-  drawText(
-    'qqqqq2d',
-    centerX,
-    y(430),
-    'rgba(120, 120, 120, 0.5)',
-    fontSize(20),
-    true
-  );
 }
 
 function renderServerConnect(state: GameState): void {
@@ -614,11 +605,11 @@ function renderServerConnect(state: GameState): void {
   // Back button
   drawBackButton(state);
 
-  const title = state.joiningGame ? 'JOIN GAME' : 'CREATE GAME';
+  const title = state.joiningGame ? 'LIITU MÄNGUGA' : 'LOO MÄNG';
   drawText(title, centerX, y(80), '#ffffff', fontSize(40), true);
 
   // Player name
-  drawText('Your Name:', centerX, y(160), '#ffffff', fontSize(20), true);
+  drawText('Sinu nimi:', centerX, y(160), '#ffffff', fontSize(20), true);
 
 
   const nameDisplay = state.playerName + '|';
@@ -626,7 +617,7 @@ function renderServerConnect(state: GameState): void {
 
   // Continue button
   const continueHighlight = state.buttonHighlightOpacity?.['continue'] || 0;
-  drawButton('Continue', REFERENCE_WIDTH / 2 - 60, 260, 120, 40, continueHighlight);
+  drawButton('Jätka', REFERENCE_WIDTH / 2 - 60, 260, 120, 40, continueHighlight);
 
 }
 
@@ -637,7 +628,7 @@ function renderConnecting(state: GameState): void {
 
   const centerX = scale.windowWidth / 2;
 
-  drawText('CONNECTING...', centerX, y(200), '#ffffff', fontSize(40), true);
+  drawText('ÜHENDAMINE...', centerX, y(200), '#ffffff', fontSize(40), true);
   drawText(state.serverAddress, centerX, y(260), '#b4b4b4', fontSize(24), true);
 }
 
@@ -651,10 +642,10 @@ function renderLobbyCreate(state: GameState): void {
   // Back button
   drawBackButton(state);
 
-  drawText('CREATE GAME', centerX, y(80), '#ffffff', fontSize(40), true);
+  drawText('LOO MÄNG', centerX, y(80), '#ffffff', fontSize(40), true);
 
   // Game name
-  drawText('Game Name:', centerX, y(160), '#ffffff', fontSize(20), true);
+  drawText('Mängu nimi:', centerX, y(160), '#ffffff', fontSize(20), true);
 
 
   const nameDisplay = state.gameName + '|';
@@ -662,7 +653,7 @@ function renderLobbyCreate(state: GameState): void {
 
   // Create button
   const createHighlight = state.buttonHighlightOpacity?.['create'] || 0;
-  drawButton('Create', REFERENCE_WIDTH / 2 - 60, 260, 120, 40, createHighlight);
+  drawButton('Loo', REFERENCE_WIDTH / 2 - 60, 260, 120, 40, createHighlight);
 
 }
 
@@ -678,26 +669,23 @@ function renderLobbyJoin(state: GameState): void {
 
   // Refresh button
   const refreshHighlight = state.buttonHighlightOpacity?.['refresh'] || 0;
-  drawButton('Refresh', REFERENCE_WIDTH - 90, 10, 80, 35, refreshHighlight);
+  drawButton('Uuenda', REFERENCE_WIDTH - 90, 10, 80, 35, refreshHighlight);
 
-  drawText('JOIN GAME', centerX, y(80), '#ffffff', fontSize(40), true);
+  drawText('LIITU MÄNGUGA', centerX, y(80), '#ffffff', fontSize(40), true);
 
   // Games list
   const gamesList = state.gamesList;
 
   if (gamesList.length === 0) {
-    drawText('No games available', centerX, y(200), '#b4b4b4', fontSize(24), true);
-    drawText('Tap Refresh to update', centerX, y(240), '#787878', fontSize(18), true);
+    drawText('Mänge pole', centerX, y(200), '#b4b4b4', fontSize(24), true);
+    drawText('Vajuta Uuenda', centerX, y(240), '#787878', fontSize(18), true);
   } else {
-    drawText('Select a game:', centerX, y(160), '#ffffff', fontSize(20), true);
+    drawText('Vali mäng:', centerX, y(160), '#ffffff', fontSize(20), true);
 
     let yPos = y(190);
-    gamesList.forEach((game: GameInfo, i: number) => {
-      const isSelected = i === state.menuSelectedIndex;
-
-      const color = isSelected ? '#ffff00' : '#b4b4b4';
+    gamesList.forEach((game: GameInfo) => {
       const gameText = `${game.name} (${game.playerCount}/${game.maxPlayers}) - ${game.hostName}`;
-      drawText(gameText, centerX, yPos, color, fontSize(20), true);
+      drawText(gameText, centerX, yPos, '#ffff00', fontSize(20), true);
       yPos += y(32);
     });
   }
@@ -716,20 +704,20 @@ function renderLobbyWaiting(state: GameState): void {
 
   // Title
   if (state.isHost) {
-    drawText('HOSTING GAME', centerX, y(30), '#ffffff', fontSize(36), true);
-    drawText(`Game: ${state.gameName}`, centerX, y(70), '#b4b4b4', fontSize(18), true);
+    drawText('MÄNGU LOOMINE', centerX, y(30), '#ffffff', fontSize(36), true);
+    drawText(`Mäng: ${state.gameName}`, centerX, y(70), '#b4b4b4', fontSize(18), true);
   } else {
-    drawText('LOBBY', centerX, y(30), '#ffffff', fontSize(36), true);
+    drawText('OOTESAAL', centerX, y(30), '#ffffff', fontSize(36), true);
   }
 
   // Player list
-  const playerCount = `Players (${state.players.length}/${MAX_PLAYERS}):`;
+  const playerCount = `Mängijad (${state.players.length}/${MAX_PLAYERS}):`;
   drawText(playerCount, x(40), y(100), '#ffffff', fontSize(22), false);
 
   let yPos = y(130);
   for (const player of state.players) {
-    const status = player.state === PlayerState.READY ? '[READY]' : '[...]';
-    const hostTag = player.isHost ? ' (HOST)' : '';
+    const status = player.state === PlayerState.READY ? '[VALMIS]' : '[...]';
+    const hostTag = player.isHost ? ' (LOOJA)' : '';
     const playerLine = `${player.name}${hostTag} ${status}`;
 
     const isLocal = player.id === state.playerId;
@@ -741,21 +729,21 @@ function renderLobbyWaiting(state: GameState): void {
 
   // Buttons - extra spacing on mobile
   const buttonSpacing = 10 + (scale.mobileBoost - 1) * 40;
-  const readyText = (getLocalPlayer(state)?.state === PlayerState.READY) ? 'Not Ready' : 'Ready';
+  const readyText = (getLocalPlayer(state)?.state === PlayerState.READY) ? 'Oota' : 'Valmis';
   const readyHighlight = state.buttonHighlightOpacity?.['ready'] || 0;
   drawButton(readyText, REFERENCE_WIDTH / 2 - 100 - buttonSpacing, 340, 100, 40, readyHighlight);
 
   // Start button (host only)
   if (state.isHost) {
     const startHighlight = state.buttonHighlightOpacity?.['start'] || 0;
-    drawButton('Start', REFERENCE_WIDTH / 2 + buttonSpacing, 340, 100, 40, startHighlight);
+    drawButton('Alusta', REFERENCE_WIDTH / 2 + buttonSpacing, 340, 100, 40, startHighlight);
 
     const readyCount = getReadyCount(state);
     if (readyCount < MIN_PLAYERS) {
-      drawText(`Need ${MIN_PLAYERS}+ ready`, centerX, y(400), '#787878', fontSize(16), true);
+      drawText(`Vaja ${MIN_PLAYERS}+ valmis`, centerX, y(400), '#787878', fontSize(16), true);
     }
   } else {
-    drawText('Waiting for host...', centerX, y(400), '#787878', fontSize(16), true);
+    drawText('Ootan loojat...', centerX, y(400), '#787878', fontSize(16), true);
   }
 }
 
@@ -829,7 +817,7 @@ function renderGame(state: GameState): void {
   } else {
     const currentPlayer = getCurrentTurnPlayer(state);
     if (currentPlayer) {
-      const turnText = `${currentPlayer.name}'s turn`;
+      const turnText = `${currentPlayer.name} kord`;
       drawText(turnText, centerX, y(250), '#b4b4b4', fontSize(32), true);
     }
   }
@@ -921,7 +909,7 @@ function renderSpectatorView(state: GameState): void {
   }
 
   if (otherPlayers.length === 0) {
-    drawText('Waiting for players...', centerX, scale.windowHeight / 2, '#b4b4b4', fontSize(30), true);
+    drawText('Ootan mängijaid...', centerX, scale.windowHeight / 2, '#b4b4b4', fontSize(30), true);
   } else if (circleImage && activeCircleCanvas && grayCircleCanvas) {
     // Use uniform scale with mobile boost for circles
     const uniformScale = uiScale();
@@ -1050,10 +1038,10 @@ function renderGameOver(state: GameState): void {
 
   if (state.showFailedCombos) {
     // Show failed combos view
-    drawText('Failed Combos', centerX, y(50), '#ffffff', fontSize(35), true);
+    drawText('Ebaõnnestunud', centerX, y(50), '#ffffff', fontSize(35), true);
 
     if (state.failedCombos.length === 0) {
-      drawText('No failed combos!', centerX, y(150), '#88ff88', fontSize(24), true);
+      drawText('Kõik õnnestus!', centerX, y(150), '#88ff88', fontSize(24), true);
     } else {
       let yPos = y(100);
       for (const fc of state.failedCombos) {
@@ -1069,38 +1057,38 @@ function renderGameOver(state: GameState): void {
 
     // Back button
     const backHighlight = state.buttonHighlightOpacity?.['back'] || 0;
-    drawButton('Back', REFERENCE_WIDTH / 2 - 60, 400, 120, 40, backHighlight);
+    drawButton('Tagasi', REFERENCE_WIDTH / 2 - 60, 400, 120, 40, backHighlight);
     return;
   }
 
   // Title
-  drawText('GAME OVER', centerX, y(60), '#ffffff', fontSize(50), true);
+  drawText('MÄNG LÄBI', centerX, y(60), '#ffffff', fontSize(50), true);
 
   // Find winner
   const winner = state.players.find(p => p.state === PlayerState.ALIVE);
 
   if (winner) {
-    const winnerText = `${winner.name} WINS!`;
+    const winnerText = `${winner.name} VÕITIS!`;
     drawText(winnerText, centerX, y(130), '#ffff00', fontSize(40), true);
   }
 
   let yPos = y(235);
   for (const player of state.players) {
-    const scoreLine = `${player.name}: ${player.score} pts`;
+    const scoreLine = `${player.name}: ${player.score} p`;
     const color = winner && player.id === winner.id ? '#ffff00' : '#c8c8c8';
     drawText(scoreLine, centerX, yPos, color, fontSize(20), true);
     yPos += y(26);
   }
 
   // Continue button
-  const buttonText = state.players.length > 1 ? 'Return to Lobby' : 'Main Menu';
+  const buttonText = state.players.length > 1 ? 'Ootesaali' : 'Menüüsse';
   const continueHighlight = state.buttonHighlightOpacity?.['continue'] || 0;
   drawButton(buttonText, REFERENCE_WIDTH / 2 - 80, 360, 160, 45, continueHighlight);
 
   // View Failed Combos button (only if there are failed combos)
   if (state.failedCombos.length > 0) {
     const failedHighlight = state.buttonHighlightOpacity?.['failed'] || 0;
-    drawButton('View Failed Combos', REFERENCE_WIDTH / 2 - 100, 420, 200, 40, failedHighlight);
+    drawButton('Vaata vigu', REFERENCE_WIDTH / 2 - 70, 420, 140, 40, failedHighlight);
   }
 }
 
