@@ -307,6 +307,79 @@ function drawInputWithComboHighlight(
   }
 }
 
+function drawWordsWithComboHighlight(
+  words: string[],
+  combo: string,
+  posX: number,
+  posY: number,
+  size: number
+): void {
+  if (!words.length || !combo) {
+    return;
+  }
+
+  ctx.font = `${size}px sans-serif`;
+  ctx.textBaseline = 'top';
+
+  const normalColor = '#aaaaaa';
+  const highlightColor = '#ff8888';
+
+  // Build the full text with commas for width calculation
+  const fullText = words.join(', ');
+  const totalWidth = ctx.measureText(fullText).width;
+  let currentX = posX - totalWidth / 2;
+
+  // Draw shadow for entire text first
+  if (ENABLE_TEXT_SHADOW) {
+    ctx.fillStyle = TEXT_SHADOW_COLOR;
+    ctx.fillText(fullText, currentX + TEXT_SHADOW_OFFSET, posY + TEXT_SHADOW_OFFSET);
+  }
+
+  // Draw each word with combo highlighting
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i];
+    const comboIndex = word.toUpperCase().indexOf(combo.toUpperCase());
+
+    if (comboIndex === -1) {
+      // Combo not found, draw all normal
+      ctx.fillStyle = normalColor;
+      ctx.fillText(word, currentX, posY);
+      currentX += ctx.measureText(word).width;
+    } else {
+      // Split into before, combo, and after parts
+      const before = word.substring(0, comboIndex);
+      const comboText = word.substring(comboIndex, comboIndex + combo.length);
+      const after = word.substring(comboIndex + combo.length);
+
+      // Draw before part (normal)
+      if (before) {
+        ctx.fillStyle = normalColor;
+        ctx.fillText(before, currentX, posY);
+        currentX += ctx.measureText(before).width;
+      }
+
+      // Draw combo part (highlighted)
+      ctx.fillStyle = highlightColor;
+      ctx.fillText(comboText, currentX, posY);
+      currentX += ctx.measureText(comboText).width;
+
+      // Draw after part (normal)
+      if (after) {
+        ctx.fillStyle = normalColor;
+        ctx.fillText(after, currentX, posY);
+        currentX += ctx.measureText(after).width;
+      }
+    }
+
+    // Draw comma separator (except for last word)
+    if (i < words.length - 1) {
+      ctx.fillStyle = normalColor;
+      ctx.fillText(', ', currentX, posY);
+      currentX += ctx.measureText(', ').width;
+    }
+  }
+}
+
 function drawScaledText(
   text: string,
   posX: number,
@@ -728,8 +801,11 @@ function renderGame(state: GameState): void {
   drawScaledText(combo, centerX, y(120), '#ffffff', fontSize(80), comboScale);
 
   // Circular sector timer between combo and input
-  const timerRadius = 20 * scale.scale;
-  const timerY = y(185);
+  // Calculate position dynamically to stay centered between combo bottom and input top
+  const comboBottom = y(120) + fontSize(80);
+  const inputTop = y(220);
+  const timerRadius = 10 * scale.scale;
+  const timerY = ((comboBottom + inputTop) / 2) - 15;
   const timeRatio = Math.max(0, state.turnTimer / state.turnDuration);
   const startAngle = -Math.PI / 2; // Start from top
   const endAngle = startAngle + timeRatio * Math.PI * 2;
@@ -792,9 +868,12 @@ function renderSpectatorView(state: GameState): void {
     drawText(timerInt.toString(), centerX, scale.windowHeight - 80, 'rgba(255, 255, 255, 0.4)', fontSize(30), true);
   }
 
-  // Circular sector timer between combo and input
-  const timerRadius = 20 * scale.scale;
-  const timerY = y(185);
+  // Circular sector timer between combo and player arc
+  // Calculate position dynamically to stay centered between combo bottom and player arc
+  const comboBottom = y(100) + fontSize(80);
+  const arcTop = y(280) - 150 * uiScale(); // arcRadius is 150 * uiScale()
+  const timerRadius = 15 * scale.scale;
+  const timerY = ((comboBottom + arcTop) / 2) + 30;
   const timeRatio = Math.max(0, state.turnTimer / state.turnDuration);
   const startAngle = -Math.PI / 2; // Start from top
   const endAngle = startAngle + timeRatio * Math.PI * 2;
@@ -956,9 +1035,8 @@ function renderGameOver(state: GameState): void {
         drawText(fc.combo, centerX, yPos, '#ff8888', fontSize(28), true);
         yPos += y(32);
 
-        // Example words
-        const wordsText = fc.exampleWords.join(', ');
-        drawText(wordsText, centerX, yPos, '#aaaaaa', fontSize(18), true);
+        // Example words with combo highlighted
+        drawWordsWithComboHighlight(fc.exampleWords, fc.combo, centerX, yPos, fontSize(18));
         yPos += y(40);
       }
     }

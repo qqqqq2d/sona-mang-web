@@ -1,4 +1,6 @@
 import { WebSocket } from 'ws';
+import * as fs from 'fs';
+import * as path from 'path';
 import {
   PlayerState,
   GamePhase,
@@ -13,6 +15,29 @@ import {
 import { GameState, Player, createPlayer } from './types';
 import { generateNewCombo, validateWord, getRandomWordsForCombo } from './game-logic';
 import { broadcastToGame, sendMessage } from './messages';
+
+// Word guess logging
+const GUESSES_LOG_FILE = path.join(process.cwd(), 'guesses.txt');
+const WORDS_ONLY_LOG_FILE = path.join(process.cwd(), 'words.txt');
+
+function logWordGuess(playerName: string, word: string, combo: string, result: TurnResult): void {
+  const timestamp = new Date().toISOString();
+  const resultStr = TurnResult[result];
+  const line = `${timestamp} | ${playerName} | ${combo} | ${word} | ${resultStr}\n`;
+
+  fs.appendFile(GUESSES_LOG_FILE, line, (err) => {
+    if (err) {
+      console.error('Failed to log word guess:', err);
+    }
+  });
+
+  // Also log just the word to words.txt
+  fs.appendFile(WORDS_ONLY_LOG_FILE, word + '\n', (err) => {
+    if (err) {
+      console.error('Failed to log word:', err);
+    }
+  });
+}
 
 export class GameSession {
   private state: GameState;
@@ -235,6 +260,9 @@ export class GameSession {
     if (!player || player.state !== PlayerState.ALIVE) return;
 
     const result = validateWord(word, this.state.currentCombo, this.state.usedWords);
+
+    // Log the guess to file
+    logWordGuess(player.name, word, this.state.currentCombo, result);
 
     // Handle wrong answers without stopping the timer
     if (result === TurnResult.WRONG || result === TurnResult.ALREADY_USED) {

@@ -25,7 +25,7 @@ function getMeasureContext(): CanvasRenderingContext2D | null {
 }
 
 // Menu item hitbox detection - must match renderer box dimensions exactly
-function getMenuItemAtPoint(refX: number, refY: number, scale: number): number {
+function getMenuItemAtPoint(refX: number, refY: number, scaleX: number, scaleY: number): number {
   const ctx = getMeasureContext();
   if (!ctx) return -1;
 
@@ -34,14 +34,26 @@ function getMenuItemAtPoint(refX: number, refY: number, scale: number): number {
   const menuItems = ['CREATE GAME', 'JOIN GAME'];
   const boxPaddingX = 20;
   const boxPaddingY = 8;
-  const textSize = Math.round(40 * scale);
+
+  // Calculate mobile boost to match renderer exactly
+  const aspectRatio = scaleX / scaleY * (REFERENCE_WIDTH / REFERENCE_HEIGHT);
+  const mobileBoost = aspectRatio < 1.0 ? 1.0 + (1.0 - aspectRatio) * 0.4 : 1.0;
+
+  // Renderer uses scale = min(scaleX, scaleY) for font size
+  const scale = Math.min(scaleX, scaleY);
+
+  // Match renderer's text size calculation: fontSize(40) = 40 * scale * mobileBoost
+  const textSize = Math.round(40 * scale * mobileBoost);
 
   ctx.font = `${textSize}px sans-serif`;
 
   for (let i = 0; i < menuPositions.length; i++) {
-    const textWidth = ctx.measureText(menuItems[i]).width / scale;
+    // textWidth is in screen pixels, divide by scaleX to get reference width
+    const textWidth = ctx.measureText(menuItems[i]).width / scaleX;
     const boxWidth = textWidth + boxPaddingX * 2;
-    const boxHeight = 40 + boxPaddingY * 2;
+    // boxHeight: renderer uses textSize + boxPaddingY*2 in screen coords
+    // Convert to reference: (textSize + 8*scaleY*2) / scaleY = textSize/scaleY + 16
+    const boxHeight = textSize / scaleY + boxPaddingY * 2;
     const boxX = centerX - boxWidth / 2;
     const boxY = menuPositions[i] - boxPaddingY;
 
@@ -170,7 +182,9 @@ export function setupInputHandlers(state: GameState): void {
 
     // Check menu items (main menu only)
     if (state.phase === ClientPhase.MAIN_MENU) {
-      state.menuPressedIndex = getMenuItemAtPoint(refX, refY, scale);
+      const scaleX = rect.width / REFERENCE_WIDTH;
+      const scaleY = rect.height / REFERENCE_HEIGHT;
+      state.menuPressedIndex = getMenuItemAtPoint(refX, refY, scaleX, scaleY);
     }
 
     // Check buttons
@@ -212,7 +226,9 @@ export function setupInputHandlers(state: GameState): void {
 
     // Main menu hover
     if (state.phase === ClientPhase.MAIN_MENU) {
-      const newSelection = getMenuItemAtPoint(refX, refY, scale);
+      const scaleX = rect.width / REFERENCE_WIDTH;
+      const scaleY = rect.height / REFERENCE_HEIGHT;
+      const newSelection = getMenuItemAtPoint(refX, refY, scaleX, scaleY);
       state.menuHoveredIndex = newSelection;
 
       if (newSelection !== -1 && state.menuSelectedIndex !== newSelection) {
@@ -328,7 +344,7 @@ function handleTapAt(state: GameState, tapX: number, tapY: number, winWidth: num
 
   switch (state.phase) {
     case ClientPhase.MAIN_MENU:
-      handleMainMenuTap(state, refX, refY, scale);
+      handleMainMenuTap(state, refX, refY, scaleX, scaleY);
       break;
     case ClientPhase.SERVER_CONNECT:
       handleServerConnectTap(state, refX, refY);
@@ -352,8 +368,8 @@ function handleTapAt(state: GameState, tapX: number, tapY: number, winWidth: num
   }
 }
 
-function handleMainMenuTap(state: GameState, refX: number, refY: number, scale: number): void {
-  const menuItem = getMenuItemAtPoint(refX, refY, scale);
+function handleMainMenuTap(state: GameState, refX: number, refY: number, scaleX: number, scaleY: number): void {
+  const menuItem = getMenuItemAtPoint(refX, refY, scaleX, scaleY);
   if (menuItem !== -1) {
     playSound('selected', 0.5);
     state.joiningGame = (menuItem === 1);
