@@ -322,7 +322,7 @@ function drawWordsWithComboHighlight(
   ctx.textBaseline = 'top';
 
   const normalColor = '#aaaaaa';
-  const highlightColor = '#ff8888';
+  const highlightColor = 'rgba(255,255,255,0.91)';
 
   // Build the full text with commas for width calculation
   const fullText = words.join(', ');
@@ -868,15 +868,44 @@ function renderSpectatorView(state: GameState): void {
     drawText(timerInt.toString(), centerX, scale.windowHeight - 80, 'rgba(255, 255, 255, 0.4)', fontSize(30), true);
   }
 
-  // Circular sector timer between combo and player arc
-  // Calculate position dynamically to stay centered between combo bottom and player arc
+  // Other players in arc
+  const otherPlayers = state.players.filter(p => p.id !== state.playerId && p.state === PlayerState.ALIVE);
+
+  // Calculate current turn player position for timer placement on wide screens
+  const aspectRatio = scale.windowWidth / scale.windowHeight;
+  const isWideScreen = aspectRatio > 1.2;
+  let currentPlayerX = centerX;
+  let currentPlayerY = y(280);
+
+  if (isWideScreen && otherPlayers.length > 0) {
+    const uniformScale = uiScale();
+    const arcRadius = 150 * uniformScale;
+    const arcCenterY = y(280);
+    const arcStartAngle = -Math.PI * 0.4;
+    const arcEndAngle = Math.PI * 0.4;
+
+    const currentPlayerIndex = otherPlayers.findIndex(p => p.id === state.currentTurnPlayerId);
+    if (currentPlayerIndex !== -1) {
+      const t = otherPlayers.length === 1 ? 0.5 : currentPlayerIndex / (otherPlayers.length - 1);
+      const angle = arcStartAngle + t * (arcEndAngle - arcStartAngle);
+      currentPlayerX = centerX + arcRadius * Math.sin(angle);
+      currentPlayerY = arcCenterY + arcRadius * (1 - Math.cos(angle)) * 0.5;
+    }
+  }
+
+  // Circular sector timer between combo and player circle
   const comboBottom = y(100) + fontSize(80);
-  const arcTop = y(280) - 150 * uiScale(); // arcRadius is 150 * uiScale()
   const timerRadius = 15 * scale.scale;
-  const timerY = ((comboBottom + arcTop) / 2) + 30;
   const timeRatio = Math.max(0, state.turnTimer / state.turnDuration);
   const startAngle = -Math.PI / 2; // Start from top
   const endAngle = startAngle + timeRatio * Math.PI * 2;
+
+  // On wide screens, position timer between combo and current player's circle
+  // On narrow screens, position centered between combo and arc
+  const timerX = isWideScreen ? currentPlayerX : centerX;
+  const timerY = isWideScreen
+    ? (comboBottom + currentPlayerY) / 2 - 55
+    : ((comboBottom + (y(280) - 150 * uiScale())) / 2) + 30;
 
   // Opacity: 0 at 10s, 1 at 1s
   const timerOpacity = Math.max(0, Math.min(1, (10 - state.turnTimer) / 9));
@@ -884,15 +913,12 @@ function renderSpectatorView(state: GameState): void {
   // Draw sector
   if (timerOpacity > 0) {
     ctx.beginPath();
-    ctx.moveTo(centerX, timerY);
-    ctx.arc(centerX, timerY, timerRadius, startAngle, endAngle);
+    ctx.moveTo(timerX, timerY);
+    ctx.arc(timerX, timerY, timerRadius, startAngle, endAngle);
     ctx.closePath();
     ctx.fillStyle = `rgba(255, 255, 255, ${timerOpacity})`;
     ctx.fill();
   }
-
-  // Other players in arc
-  const otherPlayers = state.players.filter(p => p.id !== state.playerId && p.state === PlayerState.ALIVE);
 
   if (otherPlayers.length === 0) {
     drawText('Waiting for players...', centerX, scale.windowHeight / 2, '#b4b4b4', fontSize(30), true);
