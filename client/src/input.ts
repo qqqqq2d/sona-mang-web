@@ -170,6 +170,19 @@ export function setupInputHandlers(state: GameState): void {
   const canvas = document.getElementById('game') as HTMLCanvasElement;
   canvas.addEventListener('click', (e) => handleTap(e, state, canvas));
 
+  // Mouse wheel for scrolling failed combos
+  canvas.addEventListener('wheel', (e) => {
+    if (state.phase === ClientPhase.GAME_OVER && state.showFailedCombos) {
+      e.preventDefault();
+      state.failedCombosScrollY += e.deltaY;
+    }
+  }, { passive: false });
+
+  // Track touch start position for scroll detection
+  let touchStartY = 0;
+  let touchStartScrollY = 0;
+  let isTouchScrolling = false;
+
   // Touch start - track which menu item or button is being pressed
   canvas.addEventListener('touchstart', (e) => {
     const touch = e.touches[0];
@@ -179,6 +192,11 @@ export function setupInputHandlers(state: GameState): void {
     const refX = (touchX / rect.width) * REFERENCE_WIDTH;
     const refY = (touchY / rect.height) * REFERENCE_HEIGHT;
     const scale = Math.min(rect.width / REFERENCE_WIDTH, rect.height / REFERENCE_HEIGHT);
+
+    // Track for scrolling
+    touchStartY = touch.clientY;
+    touchStartScrollY = state.failedCombosScrollY;
+    isTouchScrolling = false;
 
     // Check menu items (main menu only)
     if (state.phase === ClientPhase.MAIN_MENU) {
@@ -192,6 +210,24 @@ export function setupInputHandlers(state: GameState): void {
     state.pressedButton = button;
   });
 
+  // Touch move - handle scrolling
+  canvas.addEventListener('touchmove', (e) => {
+    if (state.phase === ClientPhase.GAME_OVER && state.showFailedCombos) {
+      const touch = e.touches[0];
+      const deltaY = touchStartY - touch.clientY;
+
+      // If moved more than 10px, consider it scrolling
+      if (Math.abs(deltaY) > 10) {
+        isTouchScrolling = true;
+        e.preventDefault();
+      }
+
+      if (isTouchScrolling) {
+        state.failedCombosScrollY = touchStartScrollY + deltaY;
+      }
+    }
+  }, { passive: false });
+
   // Touch end - handle tap and clear pressed state
   canvas.addEventListener('touchend', (e) => {
     e.preventDefault();
@@ -204,13 +240,18 @@ export function setupInputHandlers(state: GameState): void {
     state.menuPressedIndex = -1;
     state.pressedButton = null;
 
-    handleTapAt(state, x, y, rect.width, rect.height);
+    // Only handle tap if not scrolling
+    if (!isTouchScrolling) {
+      handleTapAt(state, x, y, rect.width, rect.height);
+    }
+    isTouchScrolling = false;
   });
 
   // Touch cancel - clear pressed state
   canvas.addEventListener('touchcancel', () => {
     state.menuPressedIndex = -1;
     state.pressedButton = null;
+    isTouchScrolling = false;
   });
 
   // Mouse move for hover detection
@@ -327,6 +368,9 @@ function handleTap(e: MouseEvent, state: GameState, canvas: HTMLCanvasElement): 
 // Padding for tap areas (makes buttons easier to tap on mobile)
 const TAP_PADDING = 10;
 
+// Debounce for touch/click to prevent double-processing
+let lastTapTime = 0;
+
 function inTapArea(refX: number, refY: number, areaX: number, areaY: number, areaW: number, areaH: number): boolean {
   return refX >= areaX - TAP_PADDING &&
          refX <= areaX + areaW + TAP_PADDING &&
@@ -335,6 +379,11 @@ function inTapArea(refX: number, refY: number, areaX: number, areaY: number, are
 }
 
 function handleTapAt(state: GameState, tapX: number, tapY: number, winWidth: number, winHeight: number): void {
+  // Debounce to prevent double-processing from touch + click events
+  const now = Date.now();
+  if (now - lastTapTime < 100) return;
+  lastTapTime = now;
+
   // Convert tap position to reference coordinates
   const scaleX = winWidth / REFERENCE_WIDTH;
   const scaleY = winHeight / REFERENCE_HEIGHT;
@@ -583,6 +632,7 @@ function handleGameOverTap(state: GameState, refX: number, refY: number): void {
   if (state.failedCombos.length > 0 && inTapArea(refX, refY, centerX - 70, 420, 140, 40)) {
     playSound('selected', 0.5);
     state.showFailedCombos = true;
+    state.failedCombosScrollY = 0; // Reset scroll position
     return;
   }
 
@@ -815,9 +865,31 @@ function handleGameInput(e: KeyboardEvent, state: GameState): void {
 
 function handleGameOverInput(e: KeyboardEvent, state: GameState): void {
   if (e.key === 'Escape') {
+    if (state.showFailedCombos) {
+      state.showFailedCombos = false;
+      return;
+    }
     network.disconnect();
     state.phase = ClientPhase.MAIN_MENU;
     state.players = [];
+    return;
+  }
+
+  // Scroll failed combos with arrow keys
+  if (state.showFailedCombos) {
+    const scrollAmount = 50;
+    if (e.key === 'ArrowUp') {
+      state.failedCombosScrollY -= scrollAmount;
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      state.failedCombosScrollY += scrollAmount;
+      return;
+    }
+    if (e.key === 'Enter') {
+      state.showFailedCombos = false;
+      return;
+    }
     return;
   }
 

@@ -704,17 +704,17 @@ function renderLobbyWaiting(state: GameState): void {
 
   // Title
   if (state.isHost) {
-    drawText('MÄNGU LOOMINE', centerX, y(30), '#ffffff', fontSize(36), true);
-    drawText(`Mäng: ${state.gameName}`, centerX, y(70), '#b4b4b4', fontSize(18), true);
+    drawText('MÄNGU LOOMINE', centerX, y(70), '#ffffff', fontSize(36), true);
+    drawText(`Mäng: ${state.gameName}`, centerX, y(110), '#b4b4b4', fontSize(18), true);
   } else {
-    drawText('OOTESAAL', centerX, y(30), '#ffffff', fontSize(36), true);
+    drawText('OOTESAAL', centerX, y(70), '#ffffff', fontSize(36), true);
   }
 
   // Player list
   const playerCount = `Mängijad (${state.players.length}/${MAX_PLAYERS}):`;
-  drawText(playerCount, x(40), y(100), '#ffffff', fontSize(22), false);
+  drawText(playerCount, x(40), y(140), '#ffffff', fontSize(22), false);
 
-  let yPos = y(130);
+  let yPos = y(170);
   for (const player of state.players) {
     const status = player.state === PlayerState.READY ? '[VALMIS]' : '[...]';
     const hostTag = player.isHost ? ' (LOOJA)' : '';
@@ -792,7 +792,7 @@ function renderGame(state: GameState): void {
   // Calculate position dynamically to stay centered between combo bottom and input top
   const comboBottom = y(120) + fontSize(80);
   const inputTop = y(220);
-  const timerRadius = 10 * scale.scale;
+  const timerRadius = 25 * scale.scale;
   const timerY = ((comboBottom + inputTop) / 2) - 15;
   const timeRatio = Math.max(0, state.turnTimer / state.turnDuration);
   const startAngle = -Math.PI / 2; // Start from top
@@ -910,7 +910,7 @@ function renderSpectatorView(state: GameState): void {
 
   if (otherPlayers.length === 0) {
     drawText('Ootan mängijaid...', centerX, scale.windowHeight / 2, '#b4b4b4', fontSize(30), true);
-  } else if (circleImage && activeCircleCanvas && grayCircleCanvas) {
+  } else {
     // Use uniform scale with mobile boost for circles
     const uniformScale = uiScale();
     const arcRadius = 150 * uniformScale;
@@ -1043,15 +1043,47 @@ function renderGameOver(state: GameState): void {
     if (state.failedCombos.length === 0) {
       drawText('Kõik õnnestus!', centerX, y(150), '#88ff88', fontSize(24), true);
     } else {
-      let yPos = y(100);
-      for (const fc of state.failedCombos) {
-        // Combo name
-        drawText(fc.combo, centerX, yPos, '#ff8888', fontSize(28), true);
-        yPos += y(32);
+      // Scrollable content area
+      const scrollTop = y(95);
+      const scrollBottom = y(390);
+      const scrollHeight = scrollBottom - scrollTop;
 
-        // Example words with combo highlighted
-        drawWordsWithComboHighlight(fc.exampleWords, fc.combo, centerX, yPos, fontSize(18));
-        yPos += y(40);
+      // Calculate total content height
+      const itemHeight = y(72); // 32 + 40
+      const totalContentHeight = state.failedCombos.length * itemHeight;
+      const maxScroll = Math.max(0, totalContentHeight - scrollHeight);
+
+      // Clamp scroll position
+      if (state.failedCombosScrollY < 0) state.failedCombosScrollY = 0;
+      if (state.failedCombosScrollY > maxScroll) state.failedCombosScrollY = maxScroll;
+
+      // Set up clipping region
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, scrollTop, scale.windowWidth, scrollHeight);
+      ctx.clip();
+
+      // Draw scrollable content
+      let yPos = scrollTop - state.failedCombosScrollY;
+      for (const fc of state.failedCombos) {
+        // Only draw if visible
+        if (yPos + itemHeight > scrollTop && yPos < scrollBottom) {
+          // Combo name
+          drawText(fc.combo, centerX, yPos, '#ff8888', fontSize(28), true);
+          // Example words with combo highlighted
+          drawWordsWithComboHighlight(fc.exampleWords, fc.combo, centerX, yPos + y(32), fontSize(18));
+        }
+        yPos += itemHeight;
+      }
+
+      ctx.restore();
+
+      // Draw scroll indicator if content overflows
+      if (totalContentHeight > scrollHeight) {
+        const scrollBarHeight = Math.max(20, (scrollHeight / totalContentHeight) * scrollHeight);
+        const scrollBarY = scrollTop + (state.failedCombosScrollY / maxScroll) * (scrollHeight - scrollBarHeight);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.fillRect(scale.windowWidth - 8, scrollBarY, 4, scrollBarHeight);
       }
     }
 

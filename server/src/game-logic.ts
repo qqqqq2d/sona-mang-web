@@ -92,12 +92,13 @@ export function getRandomWordsForCombo(combo: string, count: number = 3): string
   const matchingWords: string[] = [];
 
   for (const word of wordSet) {
-    if (word.includes(upperCombo)) {
+    if (word.includes(upperCombo) && word.length >= 4 && word.length <= 8) {
       matchingWords.push(word);
     }
   }
 
-  // Shuffle and take first 'count' words
-  const shuffled = matchingWords.sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, count);
+  // Shuffle randomly
+  matchingWords.sort(() => Math.random() - 0.5);
+
+  return matchingWords.slice(0, count);
 }

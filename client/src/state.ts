@@ -83,6 +83,7 @@ export interface GameState {
   // Game over
   failedCombos: FailedComboInfo[];
   showFailedCombos: boolean;
+  failedCombosScrollY: number;
 
   // View transition (between PLAYING and SPECTATING)
   viewTransitionOpacity: number;
@@ -146,6 +147,7 @@ export function createInitialState(): GameState {
 
     failedCombos: [],
     showFailedCombos: false,
+    failedCombosScrollY: 0,
 
     viewTransitionOpacity: 0,
     viewTransitionFadingOut: false,
