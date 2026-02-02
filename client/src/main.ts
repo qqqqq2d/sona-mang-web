@@ -72,6 +72,8 @@ function update(deltaTime: number): void {
       for (const t of tickTimes) {
         if (prev > t && curr <= t) {
           playSound('timer_tick', 0.2);
+          state.timerTickFlash = true;
+          state.timerTickFlashOpacity = 1.0;
           break;
         }
       }
@@ -84,6 +86,7 @@ function update(deltaTime: number): void {
   updateWrongAnswerFlash(deltaTime);
   updateCorrectAnswerFlash(deltaTime);
   updateTimeoutFlash(deltaTime);
+  updateTimerTickFlash(deltaTime);
   updateButtonHighlights(deltaTime);
   updateViewTransition(deltaTime);
 
@@ -99,6 +102,8 @@ function update(deltaTime: number): void {
   if (state.pendingTurnOverSound) {
     playSound('turn_over', 0.5);
     state.pendingTurnOverSound = false;
+    state.timerTickFlash = true;
+    state.timerTickFlashOpacity = 1.0;
   }
 }
 
@@ -132,6 +137,18 @@ function updateCorrectAnswerFlash(deltaTime: number): void {
   if (state.correctAnswerOpacity <= 0) {
     state.correctAnswerOpacity = 0;
     state.correctAnswerFlash = false;
+  }
+}
+
+function updateTimerTickFlash(deltaTime: number): void {
+  if (!state.timerTickFlash) return;
+
+  const speed = deltaTime * 1.0; // Fast fade
+  state.timerTickFlashOpacity -= speed;
+
+  if (state.timerTickFlashOpacity <= 0) {
+    state.timerTickFlashOpacity = 0;
+    state.timerTickFlash = false;
   }
 }
 

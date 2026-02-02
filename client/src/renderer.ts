@@ -794,7 +794,7 @@ function renderGame(state: GameState): void {
 
   // Pulse effect: frequency increases as timer decreases (0.1Hz at 10s, 2.1Hz at 0s)
   const turnElapsed = state.turnDuration - state.turnTimer;
-  const pulseFrequency = 0.1 + (1 - timeRatio) * 2.0;
+  const pulseFrequency = 0.1 + (1 - timeRatio) * 1.5;
   const pulseAmplitude = 0.2 * timerOpacity;
   const timerPulse = 1.0 + pulseAmplitude * Math.sin(turnElapsed * pulseFrequency * Math.PI * 2);
   const timerRadius = baseTimerRadius * timerPulse;
@@ -807,6 +807,19 @@ function renderGame(state: GameState): void {
     ctx.closePath();
     ctx.fillStyle = `rgba(255, 255, 255, ${timerOpacity})`;
     ctx.fill();
+  }
+
+  // Timer tick flash - expanding ring
+  if (state.timerTickFlashOpacity > 0) {
+    const flashProgress = 1 - state.timerTickFlashOpacity;
+    const flashRadius = timerRadius * (1 + flashProgress * 30);
+    const flashOpacity = state.timerTickFlashOpacity * 0.2;
+
+    ctx.beginPath();
+    ctx.arc(centerX, timerY, flashRadius, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(255, 255, 255, ${flashOpacity})`;
+    ctx.lineWidth = 500 * scale.scale * (1 - flashProgress * 0.5);
+    ctx.stroke();
   }
 
   // Player input
@@ -911,6 +924,19 @@ function renderSpectatorView(state: GameState): void {
     ctx.closePath();
     ctx.fillStyle = `rgba(255, 255, 255, ${timerOpacity})`;
     ctx.fill();
+  }
+
+  // Timer tick flash - expanding ring
+  if (state.timerTickFlashOpacity > 0) {
+    const flashProgress = 1 - state.timerTickFlashOpacity;
+    const flashRadius = timerRadius * (1 + flashProgress * 30);
+    const flashOpacity = state.timerTickFlashOpacity * 0.2;
+
+    ctx.beginPath();
+    ctx.arc(timerX, timerY, flashRadius, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(255, 255, 255, ${flashOpacity})`;
+    ctx.lineWidth = 500 * scale.scale * (1 - flashProgress * 0.5);
+    ctx.stroke();
   }
 
   if (otherPlayers.length === 0) {

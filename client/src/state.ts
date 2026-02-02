@@ -65,6 +65,10 @@ export interface GameState {
   pendingWrongSound: boolean;
   pendingTurnOverSound: boolean;
 
+  // Timer tick flash
+  timerTickFlash: boolean;
+  timerTickFlashOpacity: number;
+
   // Menu state
   menuSelectedIndex: number;
   inputFocus: number;
@@ -136,6 +140,9 @@ export function createInitialState(): GameState {
     pendingCorrectSound: false,
     pendingWrongSound: false,
     pendingTurnOverSound: false,
+
+    timerTickFlash: false,
+    timerTickFlashOpacity: 0,
 
     menuSelectedIndex: 0,
     inputFocus: 0,

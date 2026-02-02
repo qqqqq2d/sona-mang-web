@@ -274,13 +274,16 @@ function handleTurnResult(
       return;
 
     case TurnResult.TIMEOUT:
-      // Only show flash and play sound if it was the local player who timed out (matching SDL3)
+      // Only show timeout flash if it was the local player who timed out (matching SDL3)
       if (message.playerId === state.playerId) {
         state.timeoutFlash = true;
         state.timeoutOpacity = 0;
         state.timeoutOpacityUp = true;
-        state.pendingTurnOverSound = true;
       }
+      // Timer tick flash and sound for all timeouts (including spectator view)
+      state.timerTickFlash = true;
+      state.timerTickFlashOpacity = 1.0;
+      state.pendingTurnOverSound = true;
       state.localInput = '';
       break;
   }
