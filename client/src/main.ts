@@ -57,6 +57,27 @@ function update(deltaTime: number): void {
     if (state.turnTimer < 0) {
       state.turnTimer = 0;
     }
+
+    // Timer tick sound logic - play at 5, 3, 2, 1 seconds
+    const prev = state.prevTurnTimer;
+    const curr = state.turnTimer;
+    const tickTimes = [5, 3, 2, 1];
+
+    // Reset prevTurnTimer when turn changes
+    if (state.currentTurnPlayerId !== state.prevTurnPlayerId && state.currentTurnPlayerId !== '') {
+      state.prevTurnPlayerId = state.currentTurnPlayerId;
+      state.prevTurnTimer = state.turnTimer;
+    } else {
+      // Play at specific second thresholds
+      for (const t of tickTimes) {
+        if (prev > t && curr <= t) {
+          playSound('timer_tick', 0.2);
+          break;
+        }
+      }
+    }
+
+    state.prevTurnTimer = curr;
   }
 
   // Update visual effects
@@ -74,6 +95,10 @@ function update(deltaTime: number): void {
   if (state.pendingWrongSound) {
     playSound('wrong', 0.5);
     state.pendingWrongSound = false;
+  }
+  if (state.pendingTurnOverSound) {
+    playSound('turn_over', 0.5);
+    state.pendingTurnOverSound = false;
   }
 }
 

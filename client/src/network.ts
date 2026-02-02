@@ -279,7 +279,7 @@ function handleTurnResult(
         state.timeoutFlash = true;
         state.timeoutOpacity = 0;
         state.timeoutOpacityUp = true;
-        state.pendingWrongSound = true; // SDL3 plays wrongSound on timeout
+        state.pendingTurnOverSound = true;
       }
       state.localInput = '';
       break;

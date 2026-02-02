@@ -3,13 +3,15 @@ interface SoundEffect {
   loaded: boolean;
 }
 
-export type SoundName = 'correct' | 'wrong' | 'selection' | 'selected';
+export type SoundName = 'correct' | 'wrong' | 'selection' | 'selected' | 'timer_tick' | 'turn_over';
 
 export interface SoundSettings {
   correct: boolean;
   wrong: boolean;
   selection: boolean;
   selected: boolean;
+  timer_tick: boolean;
+  turn_over: boolean;
 }
 
 let audioContext: AudioContext | null = null;
@@ -19,6 +21,8 @@ const soundEnabled: SoundSettings = {
   wrong: true,
   selection: false,
   selected: true,
+  timer_tick: true,
+  turn_over: true,
 };
 
 export async function initAudio(): Promise<boolean> {
@@ -83,6 +87,8 @@ export async function loadAllSounds(): Promise<void> {
     loadSound('wrong', '/assets/sounds/wrong.wav'),
     loadSound('selection', '/assets/sounds/selection.wav'),
     loadSound('selected', '/assets/sounds/selected.wav'),
+    loadSound('timer_tick', '/assets/sounds/timer_tick.wav'),
+    loadSound('turn_over', '/assets/sounds/turn_over.wav'),
   ]);
 }
 
@@ -103,4 +109,6 @@ export function setAllSoundsEnabled(enabled: boolean): void {
   soundEnabled.wrong = enabled;
   soundEnabled.selection = enabled;
   soundEnabled.selected = enabled;
+  soundEnabled.timer_tick = enabled;
+  soundEnabled.turn_over = enabled;
 }

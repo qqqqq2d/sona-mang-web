@@ -6,7 +6,7 @@ import {
   isMyTurn,
   getReadyCount,
 } from './state';
-import { PlayerState, PlayerInfo, MIN_PLAYERS, MAX_PLAYERS, GameInfo, DEFAULT_LIVES } from './protocol';
+import { PlayerState, MIN_PLAYERS, MAX_PLAYERS, GameInfo } from './protocol';
 
 // Constants
 const ENABLE_COMBO_PULSING = true;
@@ -18,11 +18,6 @@ const TEXT_SHADOW_COLOR = 'rgba(0, 0, 0, 0.4)';
 // Reference resolution (matches SDL3 version)
 const REFERENCE_WIDTH = 640;
 const REFERENCE_HEIGHT = 480;
-
-// Mobile detection (coarse pointer = touch screen)
-const isMobile = (): boolean => {
-  return window.matchMedia('(pointer: coarse)').matches;
-};
 
 // Colors
 const BG_COLOR = '#000005';
@@ -154,10 +149,6 @@ function createTintedHeart(img: HTMLImageElement, r: number, g: number, b: numbe
 // Store dimensions to avoid keyboard resize issues on mobile
 let storedWidth: number | null = null;
 let storedHeight: number | null = null;
-
-export function getCanvasDimensions(): { width: number; height: number } {
-  return { width: storedWidth || 640, height: storedHeight || 480 };
-}
 
 function handleResize(): void {
   const dpr = window.devicePixelRatio || 1;
@@ -792,7 +783,7 @@ function renderGame(state: GameState): void {
   // Calculate position dynamically to stay centered between combo bottom and input top
   const comboBottom = y(120) + fontSize(80);
   const inputTop = y(220);
-  const timerRadius = 25 * scale.scale;
+  const baseTimerRadius = 25 * scale.scale;
   const timerY = ((comboBottom + inputTop) / 2) - 15;
   const timeRatio = Math.max(0, state.turnTimer / state.turnDuration);
   const startAngle = -Math.PI / 2; // Start from top
@@ -800,6 +791,13 @@ function renderGame(state: GameState): void {
 
   // Opacity: 0 at 10s, 1 at 1s
   const timerOpacity = Math.max(0, Math.min(1, (10 - state.turnTimer) / 9));
+
+  // Pulse effect: frequency increases as timer decreases (0.1Hz at 10s, 2.1Hz at 0s)
+  const turnElapsed = state.turnDuration - state.turnTimer;
+  const pulseFrequency = 0.1 + (1 - timeRatio) * 2.0;
+  const pulseAmplitude = 0.2 * timerOpacity;
+  const timerPulse = 1.0 + pulseAmplitude * Math.sin(turnElapsed * pulseFrequency * Math.PI * 2);
+  const timerRadius = baseTimerRadius * timerPulse;
 
   // Draw sector
   if (timerOpacity > 0) {
@@ -883,7 +881,7 @@ function renderSpectatorView(state: GameState): void {
 
   // Circular sector timer between combo and player circle
   const comboBottom = y(100) + fontSize(80);
-  const timerRadius = 15 * scale.scale;
+  const baseTimerRadius = 15 * scale.scale;
   const timeRatio = Math.max(0, state.turnTimer / state.turnDuration);
   const startAngle = -Math.PI / 2; // Start from top
   const endAngle = startAngle + timeRatio * Math.PI * 2;
@@ -897,6 +895,13 @@ function renderSpectatorView(state: GameState): void {
 
   // Opacity: 0 at 10s, 1 at 1s
   const timerOpacity = Math.max(0, Math.min(1, (10 - state.turnTimer) / 9));
+
+  // Pulse effect: frequency increases as timer decreases (0.1Hz at 10s, 2.1Hz at 0s)
+  const turnElapsed = state.turnDuration - state.turnTimer;
+  const pulseFrequency = 0.1 + (1 - timeRatio) * 2.0;
+  const pulseAmplitude = 0.2 * timerOpacity;
+  const timerPulse = 1.0 + pulseAmplitude * Math.sin(turnElapsed * pulseFrequency * Math.PI * 2);
+  const timerRadius = baseTimerRadius * timerPulse;
 
   // Draw sector
   if (timerOpacity > 0) {
@@ -962,8 +967,7 @@ function renderSpectatorView(state: GameState): void {
 
       // Lives (hearts above circle) with pulsing - matching SDL3
       if (tintedHeartCanvas && player.lives > 0) {
-        const baseHeartSize = isCurrentTurn ? 16 : 14;
-        const heartSize = baseHeartSize;
+        const heartSize = isCurrentTurn ? 16 : 14;
         const heartSpacing = 2;
         const totalWidth = player.lives * heartSize + (player.lives - 1) * heartSpacing;
         const heartsX = circleX - totalWidth / 2;

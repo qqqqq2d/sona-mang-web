@@ -43,9 +43,12 @@ export interface GameState {
   // Game state
   currentCombo: string;
   currentTurnPlayerId: string;
+  prevTurnPlayerId: string;
   localInput: string;
   turnTimer: number;
   turnDuration: number;
+  prevTurnTimer: number;
+  lastTickSecond: number;
 
   // Visual effects
   wrongAnswerFlash: boolean;
@@ -60,6 +63,7 @@ export interface GameState {
   // Sound triggers
   pendingCorrectSound: boolean;
   pendingWrongSound: boolean;
+  pendingTurnOverSound: boolean;
 
   // Menu state
   menuSelectedIndex: number;
@@ -113,9 +117,12 @@ export function createInitialState(): GameState {
 
     currentCombo: '',
     currentTurnPlayerId: '',
+    prevTurnPlayerId: '',
     localInput: '',
     turnTimer: DEFAULT_TURN_DURATION,
     turnDuration: DEFAULT_TURN_DURATION,
+    prevTurnTimer: DEFAULT_TURN_DURATION,
+    lastTickSecond: -1,
 
     wrongAnswerFlash: false,
     wrongAnswerOpacity: 0,
@@ -128,6 +135,7 @@ export function createInitialState(): GameState {
 
     pendingCorrectSound: false,
     pendingWrongSound: false,
+    pendingTurnOverSound: false,
 
     menuSelectedIndex: 0,
     inputFocus: 0,
