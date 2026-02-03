@@ -10,6 +10,7 @@ import {
 
 export enum ClientPhase {
   MAIN_MENU = 'MAIN_MENU',
+  INFO = 'INFO',
   SERVER_CONNECT = 'SERVER_CONNECT',
   CONNECTING = 'CONNECTING',
   LOBBY_CREATE = 'LOBBY_CREATE',

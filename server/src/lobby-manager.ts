@@ -85,7 +85,7 @@ export class LobbyManager {
       return { success: false, reason: 'Game not found' };
     }
 
-    if (game.phase !== GamePhase.LOBBY) {
+    if (game.phase !== GamePhase.LOBBY && game.phase !== GamePhase.GAME_OVER) {
       return { success: false, reason: 'Game already started' };
     }
 
@@ -135,8 +135,8 @@ export class LobbyManager {
     const gameList: GameInfo[] = [];
 
     for (const game of this.games.values()) {
-      // Only show games in lobby phase that can be joined
-      if (game.phase !== GamePhase.LOBBY) continue;
+      // Only show games in lobby or game over phase that can be joined
+      if (game.phase !== GamePhase.LOBBY && game.phase !== GamePhase.GAME_OVER) continue;
 
       const players = game.getPlayersInfo();
       const host = players.find(p => p.isHost);

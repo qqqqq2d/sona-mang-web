@@ -99,7 +99,7 @@ export class GameSession {
     if (this.state.players.size >= MAX_PLAYERS) {
       return null;
     }
-    if (this.state.phase !== GamePhase.LOBBY) {
+    if (this.state.phase !== GamePhase.LOBBY && this.state.phase !== GamePhase.GAME_OVER) {
       return null;
     }
 

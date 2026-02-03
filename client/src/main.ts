@@ -187,7 +187,7 @@ function updateButtonHighlights(deltaTime: number): void {
   }
 
   // Update button highlights
-  const allButtons = ['back', 'continue', 'create', 'refresh', 'ready', 'start', 'failed'];
+  const allButtons = ['back', 'continue', 'create', 'refresh', 'ready', 'start', 'failed', 'info'];
   for (const button of allButtons) {
     const isActive = button === state.hoveredButton || button === state.pressedButton;
     const current = state.buttonHighlightOpacity[button] || 0;

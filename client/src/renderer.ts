@@ -494,6 +494,10 @@ export function render(state: GameState): void {
       renderMainMenu(state);
       break;
 
+    case ClientPhase.INFO:
+      renderInfo(state);
+      break;
+
     case ClientPhase.SERVER_CONNECT:
       renderServerConnect(state);
       break;
@@ -584,6 +588,46 @@ function renderMainMenu(state: GameState): void {
     ctx.fillText(menuItems[i], boxX + (boxWidth - measuredWidth) / 2, boxY + boxHeight / 2);
   }
 
+  // Info button (bottom-right)
+  const infoHighlight = state.buttonHighlightOpacity?.['info'] || 0;
+  drawButton('?', REFERENCE_WIDTH - 55, REFERENCE_HEIGHT - 55, 45, 45, infoHighlight);
+}
+
+function renderInfo(state: GameState): void {
+  // Purple background
+  ctx.fillStyle = '#11071e';
+  ctx.fillRect(0, 0, scale.windowWidth, scale.windowHeight);
+  drawVignette();
+
+  const centerX = scale.windowWidth / 2;
+
+  // Back button
+  drawBackButton(state);
+
+  // Title
+  drawText('INFO', centerX, y(80), '#ffffff', fontSize(50), true);
+
+  // Info text
+  const infoLines = [
+    'Sõna Mäng on sõnamäng, kus',
+    'pead leidma sõnu, mis sisaldavad',
+    'antud tähekombinatsiooni.',
+    '',
+    'Sisesta sõna ja vajuta Enter.',
+    'Igal voorul on aega 10 sekundit.',
+    '',
+    'Mäng lõppeb, kui jääd viimaseks!',
+    '',
+    'NB: Sõnaloend ei ole veel täielik.',
+  ];
+
+  let yPos = y(150);
+  const lineHeight = y(28);
+
+  for (const line of infoLines) {
+    drawText(line, centerX, yPos, '#c8c8c8', fontSize(19), true);
+    yPos += lineHeight;
+  }
 }
 
 function renderServerConnect(state: GameState): void {
@@ -809,17 +853,20 @@ function renderGame(state: GameState): void {
     ctx.fill();
   }
 
-  // Timer tick flash - expanding ring
+  // Timer tick flash - expanding ring with radial gradient
   if (state.timerTickFlashOpacity > 0) {
     const flashProgress = 1 - state.timerTickFlashOpacity;
-    const flashRadius = timerRadius * (1 + flashProgress * 30);
-    const flashOpacity = state.timerTickFlashOpacity * 0.2;
+    const innerRadius = timerRadius * (1 + flashProgress * 30);
+    const outerRadius = innerRadius + 1 * scale.scale;
+
+    const gradient = ctx.createRadialGradient(centerX, timerY, innerRadius, centerX, timerY, outerRadius);
+    gradient.addColorStop(0, `rgba(255, 255, 255, ${state.timerTickFlashOpacity * 0.3})`);
+    gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
 
     ctx.beginPath();
-    ctx.arc(centerX, timerY, flashRadius, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(255, 255, 255, ${flashOpacity})`;
-    ctx.lineWidth = 500 * scale.scale * (1 - flashProgress * 0.5);
-    ctx.stroke();
+    ctx.arc(centerX, timerY, outerRadius, 0, Math.PI * 2);
+    ctx.fillStyle = gradient;
+    ctx.fill();
   }
 
   // Player input
@@ -870,41 +917,15 @@ function renderSpectatorView(state: GameState): void {
   // Other players in arc
   const otherPlayers = state.players.filter(p => p.id !== state.playerId && p.state === PlayerState.ALIVE);
 
-  // Calculate current turn player position for timer placement on wide screens
-  const aspectRatio = scale.windowWidth / scale.windowHeight;
-  const isWideScreen = aspectRatio > 1.2;
-  let currentPlayerX = centerX;
-  let currentPlayerY = y(280);
-
-  if (isWideScreen && otherPlayers.length > 0) {
-    const uniformScale = uiScale();
-    const arcRadius = 150 * uniformScale;
-    const arcCenterY = y(280);
-    const arcStartAngle = -Math.PI * 0.4;
-    const arcEndAngle = Math.PI * 0.4;
-
-    const currentPlayerIndex = otherPlayers.findIndex(p => p.id === state.currentTurnPlayerId);
-    if (currentPlayerIndex !== -1) {
-      const t = otherPlayers.length === 1 ? 0.5 : currentPlayerIndex / (otherPlayers.length - 1);
-      const angle = arcStartAngle + t * (arcEndAngle - arcStartAngle);
-      currentPlayerX = centerX + arcRadius * Math.sin(angle);
-      currentPlayerY = arcCenterY + arcRadius * (1 - Math.cos(angle)) * 0.5;
-    }
-  }
-
-  // Circular sector timer between combo and player circle
+  // Circular sector timer - always centered between combo and arc
   const comboBottom = y(100) + fontSize(80);
   const baseTimerRadius = 15 * scale.scale;
   const timeRatio = Math.max(0, state.turnTimer / state.turnDuration);
   const startAngle = -Math.PI / 2; // Start from top
   const endAngle = startAngle + timeRatio * Math.PI * 2;
 
-  // On wide screens, position timer between combo and current player's circle
-  // On narrow screens, position centered between combo and arc
-  const timerX = isWideScreen ? currentPlayerX : centerX;
-  const timerY = isWideScreen
-    ? (comboBottom + currentPlayerY) / 2 - 55
-    : ((comboBottom + (y(280) - 150 * uiScale())) / 2) + 30;
+  const timerX = centerX;
+  const timerY = ((comboBottom + (y(280) - 150 * uiScale())) / 2) + 30;
 
   // Opacity: 0 at 10s, 1 at 1s
   const timerOpacity = Math.max(0, Math.min(1, (10 - state.turnTimer) / 9));
@@ -926,17 +947,20 @@ function renderSpectatorView(state: GameState): void {
     ctx.fill();
   }
 
-  // Timer tick flash - expanding ring
+  // Timer tick flash - expanding ring with radial gradient
   if (state.timerTickFlashOpacity > 0) {
     const flashProgress = 1 - state.timerTickFlashOpacity;
-    const flashRadius = timerRadius * (1 + flashProgress * 30);
-    const flashOpacity = state.timerTickFlashOpacity * 0.2;
+    const innerRadius = timerRadius * (1 + flashProgress * 30);
+    const outerRadius = innerRadius + 1 * scale.scale;
+
+    const gradient = ctx.createRadialGradient(timerX, timerY, innerRadius, timerX, timerY, outerRadius);
+    gradient.addColorStop(0, `rgba(255, 255, 255, ${state.timerTickFlashOpacity * 0.3})`);
+    gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
 
     ctx.beginPath();
-    ctx.arc(timerX, timerY, flashRadius, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(255, 255, 255, ${flashOpacity})`;
-    ctx.lineWidth = 500 * scale.scale * (1 - flashProgress * 0.5);
-    ctx.stroke();
+    ctx.arc(timerX, timerY, outerRadius, 0, Math.PI * 2);
+    ctx.fillStyle = gradient;
+    ctx.fill();
   }
 
   if (otherPlayers.length === 0) {

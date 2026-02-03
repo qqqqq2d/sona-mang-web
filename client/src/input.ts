@@ -68,6 +68,12 @@ function getMenuItemAtPoint(refX: number, refY: number, scaleX: number, scaleY: 
 // Button definitions: name -> [refX, refY, refWidth, refHeight]
 // Must match the button positions in renderer.ts
 const BUTTON_DEFS: { [phase: string]: { [name: string]: [number, number, number, number] } } = {
+  [ClientPhase.MAIN_MENU]: {
+    'info': [640 - 55, 480 - 55, 45, 45],
+  },
+  [ClientPhase.INFO]: {
+    'back': [10, 10, 95, 35],
+  },
   [ClientPhase.SERVER_CONNECT]: {
     'back': [10, 10, 95, 35],
     'continue': [320 - 60, 260, 120, 40],
@@ -395,6 +401,9 @@ function handleTapAt(state: GameState, tapX: number, tapY: number, winWidth: num
     case ClientPhase.MAIN_MENU:
       handleMainMenuTap(state, refX, refY, scaleX, scaleY);
       break;
+    case ClientPhase.INFO:
+      handleInfoTap(state, refX, refY);
+      break;
     case ClientPhase.SERVER_CONNECT:
       handleServerConnectTap(state, refX, refY);
       break;
@@ -418,11 +427,27 @@ function handleTapAt(state: GameState, tapX: number, tapY: number, winWidth: num
 }
 
 function handleMainMenuTap(state: GameState, refX: number, refY: number, scaleX: number, scaleY: number): void {
+  // Info button (bottom-right)
+  if (inTapArea(refX, refY, REFERENCE_WIDTH - 55, REFERENCE_HEIGHT - 55, 45, 45)) {
+    playSound('selected', 0.5);
+    state.phase = ClientPhase.INFO;
+    return;
+  }
+
   const menuItem = getMenuItemAtPoint(refX, refY, scaleX, scaleY);
   if (menuItem !== -1) {
     playSound('selected', 0.5);
     state.joiningGame = (menuItem === 1);
     state.phase = ClientPhase.SERVER_CONNECT;
+  }
+}
+
+function handleInfoTap(state: GameState, refX: number, refY: number): void {
+  // Back button (top-left)
+  if (inTapArea(refX, refY, 10, 10, 95, 35)) {
+    state.phase = ClientPhase.MAIN_MENU;
+    playSound('selected', 0.5);
+    return;
   }
 }
 
@@ -675,6 +700,10 @@ function handleKeyDown(e: KeyboardEvent, state: GameState): void {
       handleMainMenuInput(e, state);
       break;
 
+    case ClientPhase.INFO:
+      handleInfoInput(e, state);
+      break;
+
     case ClientPhase.SERVER_CONNECT:
       handleServerConnectInput(e, state);
       break;
@@ -728,6 +757,12 @@ function handleMainMenuInput(e: KeyboardEvent, state: GameState): void {
     }
   } else if (e.key === 'Escape') {
     // Could close the app/tab
+  }
+}
+
+function handleInfoInput(e: KeyboardEvent, state: GameState): void {
+  if (e.key === 'Escape' || e.key === 'Enter') {
+    state.phase = ClientPhase.MAIN_MENU;
   }
 }
 
