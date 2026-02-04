@@ -192,13 +192,19 @@ function handleMessage(state: GameState, message: ServerMessage): void {
 
       // Switch between playing and spectating
       const local = state.players.find(p => p.id === state.playerId);
-      if (local && local.state === PlayerState.ALIVE) {
-        if (message.playerId === state.playerId) {
-          state.phase = ClientPhase.PLAYING;
-          focusHiddenInput();
-        } else {
+      if (local) {
+        if (local.state === PlayerState.ELIMINATED) {
+          // Eliminated players always spectate
           state.phase = ClientPhase.SPECTATING;
           blurHiddenInput();
+        } else if (local.state === PlayerState.ALIVE) {
+          if (message.playerId === state.playerId) {
+            state.phase = ClientPhase.PLAYING;
+            focusHiddenInput();
+          } else {
+            state.phase = ClientPhase.SPECTATING;
+            blurHiddenInput();
+          }
         }
       }
       break;
@@ -228,6 +234,11 @@ function handleMessage(state: GameState, message: ServerMessage): void {
       const eliminated = state.players.find(p => p.id === message.playerId);
       if (eliminated) {
         eliminated.state = PlayerState.ELIMINATED;
+      }
+      // If local player was eliminated, switch to spectator mode
+      if (message.playerId === state.playerId) {
+        state.phase = ClientPhase.SPECTATING;
+        blurHiddenInput();
       }
       break;
 
@@ -295,13 +306,19 @@ function handleTurnResult(
 
   // Update phase based on whose turn it is
   const localPlayer = state.players.find(p => p.id === state.playerId);
-  if (localPlayer && localPlayer.state === PlayerState.ALIVE && state.phase !== ClientPhase.GAME_OVER) {
-    if (message.nextPlayerId === state.playerId) {
-      state.phase = ClientPhase.PLAYING;
-      focusHiddenInput();
-    } else {
+  if (localPlayer && state.phase !== ClientPhase.GAME_OVER) {
+    if (localPlayer.state === PlayerState.ELIMINATED) {
+      // Eliminated players always spectate
       state.phase = ClientPhase.SPECTATING;
       blurHiddenInput();
+    } else if (localPlayer.state === PlayerState.ALIVE) {
+      if (message.nextPlayerId === state.playerId) {
+        state.phase = ClientPhase.PLAYING;
+        focusHiddenInput();
+      } else {
+        state.phase = ClientPhase.SPECTATING;
+        blurHiddenInput();
+      }
     }
   }
 }
