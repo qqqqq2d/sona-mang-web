@@ -1,5 +1,3 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-
 name: Build and deploy to Azure
 
 on:
@@ -25,9 +23,13 @@ jobs:
         npm install
         npm run build
 
+    - name: Create deployment package
+      run: |
+        zip -r deploy.zip . -x "*.git*" -x "node_modules/*" -x "client/node_modules/*" -x "server/node_modules/*"
+
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v3
       with:
         app-name: 'sonamang'
         publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-        package: .
+        package: deploy.zip
