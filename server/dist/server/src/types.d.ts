@@ -21,7 +21,10 @@ export interface GameState {
     turnTimer: number;
     turnDuration: number;
     usedWords: Set<string>;
+    comboChangePerRound: boolean;
+    roundStartPlayerId: string;
     turnTimerHandle: NodeJS.Timeout | null;
+    failedCombos: Set<string>;
 }
 export declare function createPlayer(id: string, name: string, ws: WebSocket, isHost?: boolean): Player;
 export declare function createGameState(id: string, name: string, hostId: string): GameState;

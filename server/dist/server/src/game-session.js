@@ -1,13 +1,68 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GameSession = void 0;
+const fs = __importStar(require("fs"));
+const path = __importStar(require("path"));
 const protocol_1 = require("../../shared/protocol");
 const types_1 = require("./types");
 const game_logic_1 = require("./game-logic");
 const messages_1 = require("./messages");
+// Word guess logging
+const GUESSES_LOG_FILE = path.join(process.cwd(), 'guesses.txt');
+const WORDS_ONLY_LOG_FILE = path.join(process.cwd(), 'words.txt');
+function logWordGuess(playerName, word, combo, result) {
+    const timestamp = new Date().toISOString();
+    const resultStr = protocol_1.TurnResult[result];
+    const line = `${timestamp} | ${playerName} | ${combo} | ${word} | ${resultStr}\n`;
+    fs.appendFile(GUESSES_LOG_FILE, line, (err) => {
+        if (err) {
+            console.error('Failed to log word guess:', err);
+        }
+    });
+    // Also log just the word to words.txt
+    fs.appendFile(WORDS_ONLY_LOG_FILE, word + '\n', (err) => {
+        if (err) {
+            console.error('Failed to log word:', err);
+        }
+    });
+}
 class GameSession {
     constructor(id, name, hostId) {
         this.tickInterval = null;
+        this.turnStartTime = 0;
         this.state = {
             id,
             name,
@@ -20,6 +75,9 @@ class GameSession {
             turnDuration: protocol_1.DEFAULT_TURN_DURATION,
             usedWords: new Set(),
             turnTimerHandle: null,
+            comboChangePerRound: true,
+            roundStartPlayerId: '',
+            failedCombos: new Set(),
         };
     }
     get id() {
@@ -52,7 +110,7 @@ class GameSession {
         if (this.state.players.size >= protocol_1.MAX_PLAYERS) {
             return null;
         }
-        if (this.state.phase !== protocol_1.GamePhase.LOBBY) {
+        if (this.state.phase !== protocol_1.GamePhase.LOBBY && this.state.phase !== protocol_1.GamePhase.GAME_OVER) {
             return null;
         }
         const isHost = this.state.players.size === 0;
@@ -117,6 +175,7 @@ class GameSession {
         }
         // Reset game state
         this.state.usedWords.clear();
+        this.state.failedCombos.clear();
         this.state.phase = protocol_1.GamePhase.PLAYING;
         this.state.currentCombo = (0, game_logic_1.generateNewCombo)();
         this.state.turnTimer = this.state.turnDuration;
@@ -124,6 +183,7 @@ class GameSession {
         for (const player of this.state.players.values()) {
             if (player.state === protocol_1.PlayerState.ALIVE) {
                 this.state.currentTurnPlayerId = player.id;
+                this.state.roundStartPlayerId = player.id;
                 break;
             }
         }
@@ -140,10 +200,18 @@ class GameSession {
     }
     startTurnTimer() {
         this.stopTurnTimer();
+        this.turnStartTime = Date.now();
         this.state.turnTimer = this.state.turnDuration;
-        // Tick every 100ms for smooth countdown
+        // Broadcast turn start so clients sync their timers
+        (0, messages_1.broadcastToGame)(this.state.players, {
+            type: protocol_1.MessageType.TURN_START,
+            playerId: this.state.currentTurnPlayerId,
+            duration: this.state.turnDuration,
+        });
+        // Tick every 100ms, use timestamps to avoid drift
         this.tickInterval = setInterval(() => {
-            this.state.turnTimer -= 0.1;
+            const elapsed = (Date.now() - this.turnStartTime) / 1000;
+            this.state.turnTimer = this.state.turnDuration - elapsed;
             if (this.state.turnTimer <= 0) {
                 this.handleTimeout();
             }
@@ -180,39 +248,44 @@ class GameSession {
         if (!player || player.state !== protocol_1.PlayerState.ALIVE)
             return;
         const result = (0, game_logic_1.validateWord)(word, this.state.currentCombo, this.state.usedWords);
+        // Log the guess to file
+        logWordGuess(player.name, word, this.state.currentCombo, result);
+        // Handle wrong answers without stopping the timer
+        if (result === protocol_1.TurnResult.WRONG || result === protocol_1.TurnResult.ALREADY_USED) {
+            const elapsed = (Date.now() - this.turnStartTime) / 1000;
+            const remaining = Math.max(0, this.state.turnDuration - elapsed);
+            (0, messages_1.broadcastToGame)(this.state.players, {
+                type: protocol_1.MessageType.TURN_RESULT,
+                playerId: player.id,
+                result,
+                nextPlayerId: player.id,
+                newCombo: this.state.currentCombo,
+                word,
+                remainingTime: remaining,
+            });
+            return;
+        }
         this.processTurnResult(player, result, word);
     }
     handleTimeout() {
+        this.stopTurnTimer(); // Stop immediately to prevent multiple triggers
         const player = this.state.players.get(this.state.currentTurnPlayerId);
         if (player) {
             this.processTurnResult(player, protocol_1.TurnResult.TIMEOUT, '');
         }
     }
     processTurnResult(player, result, word) {
+        this.stopTurnTimer();
         switch (result) {
             case protocol_1.TurnResult.CORRECT:
-                this.stopTurnTimer();
                 player.score++;
                 this.state.usedWords.add(word.toUpperCase());
                 player.currentInput = '';
-                this.state.currentCombo = (0, game_logic_1.generateNewCombo)();
-                this.advanceToNextPlayer();
+                this.advanceToNextPlayer(true);
                 break;
-            case protocol_1.TurnResult.WRONG:
-            case protocol_1.TurnResult.ALREADY_USED:
-                // Don't lose life on wrong answer, just notify and let them try again
-                // Timer continues counting down (don't restart) to match C++ behavior
-                (0, messages_1.broadcastToGame)(this.state.players, {
-                    type: protocol_1.MessageType.TURN_RESULT,
-                    playerId: player.id,
-                    result,
-                    nextPlayerId: player.id, // Same player continues
-                    newCombo: this.state.currentCombo,
-                    word,
-                });
-                return; // Don't broadcast another result, don't stop/restart timer
             case protocol_1.TurnResult.TIMEOUT:
-                this.stopTurnTimer();
+                // Track the failed combo
+                this.state.failedCombos.add(this.state.currentCombo);
                 player.lives--;
                 if (player.lives <= 0) {
                     player.state = protocol_1.PlayerState.ELIMINATED;
@@ -222,8 +295,7 @@ class GameSession {
                     });
                 }
                 player.currentInput = '';
-                this.state.currentCombo = (0, game_logic_1.generateNewCombo)();
-                this.advanceToNextPlayer();
+                this.advanceToNextPlayer(false); // Keep same combo on failure
                 break;
         }
         // Broadcast player update
@@ -250,7 +322,7 @@ class GameSession {
         // Start next turn timer
         this.startTurnTimer();
     }
-    advanceToNextPlayer() {
+    advanceToNextPlayer(mayChangeCombo = false) {
         const playerIds = Array.from(this.state.players.keys());
         if (playerIds.length === 0)
             return;
@@ -261,6 +333,21 @@ class GameSession {
             const nextPlayerId = playerIds[nextIndex];
             const nextPlayer = this.state.players.get(nextPlayerId);
             if (nextPlayer && nextPlayer.state === protocol_1.PlayerState.ALIVE) {
+                // Check if round start player is still alive
+                const roundStartPlayer = this.state.players.get(this.state.roundStartPlayerId);
+                if (!roundStartPlayer || roundStartPlayer.state !== protocol_1.PlayerState.ALIVE) {
+                    // Round start player eliminated, update to next alive player
+                    this.state.roundStartPlayerId = nextPlayerId;
+                }
+                // Check if everyone has had a turn with current combo
+                const everyoneTriedCombo = nextPlayerId === this.state.roundStartPlayerId;
+                // Handle combo change:
+                // - forceChange (correct answer): always change combo
+                // - timeout: only change if everyone has had a turn with this combo
+                if (mayChangeCombo || everyoneTriedCombo) {
+                    this.state.currentCombo = (0, game_logic_1.generateNewCombo)();
+                    this.state.roundStartPlayerId = nextPlayerId;
+                }
                 this.state.currentTurnPlayerId = nextPlayerId;
                 this.state.turnTimer = this.state.turnDuration;
                 // Clear their input
@@ -295,9 +382,18 @@ class GameSession {
     endGame(winnerId) {
         this.stopTurnTimer();
         this.state.phase = protocol_1.GamePhase.GAME_OVER;
+        // Build failed combos with example words
+        const failedCombosWithWords = [];
+        for (const combo of this.state.failedCombos) {
+            failedCombosWithWords.push({
+                combo,
+                exampleWords: (0, game_logic_1.getRandomWordsForCombo)(combo, 3),
+            });
+        }
         (0, messages_1.broadcastToGame)(this.state.players, {
             type: protocol_1.MessageType.GAME_OVER,
             winnerId,
+            failedCombos: failedCombosWithWords,
         });
     }
     returnToLobby() {
@@ -306,6 +402,7 @@ class GameSession {
         this.state.usedWords.clear();
         this.state.currentCombo = '';
         this.state.currentTurnPlayerId = '';
+        this.state.roundStartPlayerId = '';
         for (const player of this.state.players.values()) {
             player.state = protocol_1.PlayerState.CONNECTED;
             player.lives = protocol_1.DEFAULT_LIVES;
@@ -313,6 +410,12 @@ class GameSession {
             player.currentInput = '';
         }
         this.broadcastPlayerList();
+    }
+    setComboChangePerRound(enabled) {
+        this.state.comboChangePerRound = enabled;
+    }
+    get comboChangePerRound() {
+        return this.state.comboChangePerRound;
     }
     broadcastPlayerList() {
         (0, messages_1.broadcastToGame)(this.state.players, {

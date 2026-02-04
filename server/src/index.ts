@@ -1,4 +1,7 @@
 import { WebSocketServer, WebSocket } from 'ws';
+import { createServer } from 'http';
+import { readFileSync, existsSync, statSync } from 'fs';
+import { join, extname } from 'path';
 import {
   MessageType,
   ClientMessage,
@@ -9,6 +12,24 @@ import { loadWordList, loadComboList } from './game-logic';
 import { parseMessage, sendMessage } from './messages';
 
 const PORT = parseInt(process.env.PORT || '8080', 10);
+
+// Static file serving
+// __dirname is server/dist/server/src, so go up 4 levels to reach project root
+const STATIC_DIR = join(__dirname, '..', '..', '..', '..', 'client', 'dist');
+const MIME_TYPES: Record<string, string> = {
+  '.html': 'text/html',
+  '.js': 'application/javascript',
+  '.css': 'text/css',
+  '.json': 'application/json',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.svg': 'image/svg+xml',
+  '.wav': 'audio/wav',
+  '.mp3': 'audio/mpeg',
+  '.ogg': 'audio/ogg',
+  '.ico': 'image/x-icon',
+};
 
 // Initialize word lists
 console.log('Loading word lists...');
@@ -21,11 +42,49 @@ if (!loadComboList('kombinatsioonid4.txt')) {
   process.exit(1);
 }
 
-// Create WebSocket server
-const wss = new WebSocketServer({ port: PORT });
+// Create HTTP server for static files
+const server = createServer((req, res) => {
+  let filePath = join(STATIC_DIR, req.url === '/' ? 'index.html' : req.url || '');
+
+  // Security: prevent directory traversal
+  if (!filePath.startsWith(STATIC_DIR)) {
+    res.writeHead(403);
+    res.end('Forbidden');
+    return;
+  }
+
+  // Check if file exists
+  if (!existsSync(filePath) || !statSync(filePath).isFile()) {
+    // SPA fallback: serve index.html for non-file routes
+    filePath = join(STATIC_DIR, 'index.html');
+    if (!existsSync(filePath)) {
+      res.writeHead(404);
+      res.end('Not found');
+      return;
+    }
+  }
+
+  const ext = extname(filePath).toLowerCase();
+  const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+
+  try {
+    const content = readFileSync(filePath);
+    res.writeHead(200, { 'Content-Type': contentType });
+    res.end(content);
+  } catch {
+    res.writeHead(500);
+    res.end('Server error');
+  }
+});
+
+// Create WebSocket server attached to HTTP server
+const wss = new WebSocketServer({ server });
 const lobbyManager = new LobbyManager();
 
-console.log(`Sona Mang server listening on port ${PORT}`);
+server.listen(PORT, () => {
+  console.log(`Sona Mang server listening on port ${PORT}`);
+  console.log(`Static files served from: ${STATIC_DIR}`);
+});
 
 wss.on('connection', (ws: WebSocket) => {
   const playerId = lobbyManager.registerClient(ws);
@@ -232,7 +291,9 @@ function handleTurnSubmit(ws: WebSocket, word: string): void {
 process.on('SIGINT', () => {
   console.log('\nShutting down server...');
   wss.close(() => {
-    console.log('Server closed');
-    process.exit(0);
+    server.close(() => {
+      console.log('Server closed');
+      process.exit(0);
+    });
   });
 });

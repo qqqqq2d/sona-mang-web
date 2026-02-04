@@ -23,6 +23,7 @@ var MessageType;
     MessageType["START_GAME_REQUEST"] = "START_GAME_REQUEST";
     MessageType["GAME_START"] = "GAME_START";
     MessageType["NEW_COMBO"] = "NEW_COMBO";
+    MessageType["RETURN_TO_LOBBY"] = "RETURN_TO_LOBBY";
     // Turn management
     MessageType["TURN_START"] = "TURN_START";
     MessageType["TURN_INPUT"] = "TURN_INPUT";

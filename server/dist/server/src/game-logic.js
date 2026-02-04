@@ -39,6 +39,7 @@ exports.generateNewCombo = generateNewCombo;
 exports.validateWord = validateWord;
 exports.wordExists = wordExists;
 exports.getValidWordsForCombo = getValidWordsForCombo;
+exports.getRandomWordsForCombo = getRandomWordsForCombo;
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const protocol_1 = require("../../shared/protocol");
@@ -46,8 +47,8 @@ let wordSet = new Set();
 let comboList = [];
 function loadWordList(filename) {
     try {
-        // Go up to project root where word files are located
-        const filePath = path.resolve(__dirname, '..', '..', '..', filename);
+        // __dirname is server/dist/server/src when compiled, go up 3 levels to server/
+        const filePath = path.resolve(__dirname, '..', '..', '..', 'data', filename);
         const content = fs.readFileSync(filePath, 'utf-8');
         const words = content.split('\n').filter(w => w.trim().length > 0);
         wordSet = new Set(words.map(w => w.trim().toUpperCase()));
@@ -61,7 +62,8 @@ function loadWordList(filename) {
 }
 function loadComboList(filename) {
     try {
-        const filePath = path.resolve(__dirname, '..', '..', '..', filename);
+        // __dirname is server/dist/server/src when compiled, go up 3 levels to server/
+        const filePath = path.resolve(__dirname, '..', '..', '..', 'data', filename);
         const content = fs.readFileSync(filePath, 'utf-8');
         comboList = content.split('\n').filter(c => c.trim().length > 0).map(c => c.trim().toUpperCase());
         console.log(`Loaded ${comboList.length} combos from ${filename}`);
@@ -110,5 +112,17 @@ function getValidWordsForCombo(combo, usedWords) {
         }
     }
     return validWords;
+}
+function getRandomWordsForCombo(combo, count = 3) {
+    const upperCombo = combo.toUpperCase();
+    const matchingWords = [];
+    for (const word of wordSet) {
+        if (word.includes(upperCombo) && word.length >= 4 && word.length <= 8) {
+            matchingWords.push(word);
+        }
+    }
+    // Shuffle randomly
+    matchingWords.sort(() => Math.random() - 0.5);
+    return matchingWords.slice(0, count);
 }
 //# sourceMappingURL=game-logic.js.map

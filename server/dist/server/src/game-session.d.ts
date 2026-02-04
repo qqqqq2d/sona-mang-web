@@ -4,6 +4,7 @@ import { Player } from './types';
 export declare class GameSession {
     private state;
     private tickInterval;
+    private turnStartTime;
     constructor(id: string, name: string, hostId: string);
     get id(): string;
     get name(): string;
@@ -26,6 +27,8 @@ export declare class GameSession {
     private checkWinCondition;
     private endGame;
     returnToLobby(): void;
+    setComboChangePerRound(enabled: boolean): void;
+    get comboChangePerRound(): boolean;
     private broadcastPlayerList;
     isEmpty(): boolean;
     getPlayer(playerId: string): Player | undefined;

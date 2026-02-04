@@ -15,6 +15,7 @@ export declare enum MessageType {
     START_GAME_REQUEST = "START_GAME_REQUEST",
     GAME_START = "GAME_START",
     NEW_COMBO = "NEW_COMBO",
+    RETURN_TO_LOBBY = "RETURN_TO_LOBBY",
     TURN_START = "TURN_START",
     TURN_INPUT = "TURN_INPUT",
     TURN_SUBMIT = "TURN_SUBMIT",
@@ -92,6 +93,9 @@ export interface PingMessage {
 export interface StartGameRequestMessage {
     type: MessageType.START_GAME_REQUEST;
 }
+export interface ReturnToLobbyMessage {
+    type: MessageType.RETURN_TO_LOBBY;
+}
 export interface JoinAcceptMessage {
     type: MessageType.JOIN_ACCEPT;
     playerId: string;
@@ -141,6 +145,7 @@ export interface TurnResultMessage {
     nextPlayerId: string;
     newCombo: string;
     word?: string;
+    remainingTime?: number;
 }
 export interface PlayerUpdateMessage {
     type: MessageType.PLAYER_UPDATE;
@@ -153,9 +158,14 @@ export interface PlayerEliminatedMessage {
     type: MessageType.PLAYER_ELIMINATED;
     playerId: string;
 }
+export interface FailedComboInfo {
+    combo: string;
+    exampleWords: string[];
+}
 export interface GameOverMessage {
     type: MessageType.GAME_OVER;
     winnerId: string | null;
+    failedCombos?: FailedComboInfo[];
 }
 export interface PongMessage {
     type: MessageType.PONG;
@@ -164,6 +174,6 @@ export interface ErrorMessage {
     type: MessageType.ERROR;
     message: string;
 }
-export type ClientMessage = JoinRequestMessage | CreateGameMessage | ListGamesMessage | PlayerReadyMessage | StartGameRequestMessage | TurnInputMessage | TurnSubmitMessage | PingMessage;
+export type ClientMessage = JoinRequestMessage | CreateGameMessage | ListGamesMessage | PlayerReadyMessage | StartGameRequestMessage | ReturnToLobbyMessage | TurnInputMessage | TurnSubmitMessage | PingMessage;
 export type ServerMessage = JoinAcceptMessage | JoinRejectMessage | GamesListMessage | PlayerListMessage | PlayerLeftMessage | GameStartMessage | NewComboMessage | TurnStartMessage | TurnInputBroadcastMessage | TurnResultMessage | PlayerUpdateMessage | PlayerEliminatedMessage | GameOverMessage | PongMessage | ErrorMessage;
 //# sourceMappingURL=protocol.d.ts.map

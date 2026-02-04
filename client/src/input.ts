@@ -452,10 +452,8 @@ function handleInfoTap(state: GameState, refX: number, refY: number): void {
 }
 
 function autoConnectToServer(state: GameState): void {
-  // Use the same host that served the page, with WebSocket port
-  const host = window.location.hostname || 'localhost';
-  const port = '8080'; // WebSocket server port
-  const address = `${host}:${port}`;
+  // Use the same host and port that served the page
+  const address = window.location.host || 'localhost:8080';
 
   state.serverAddress = address;
   state.phase = ClientPhase.CONNECTING;

@@ -28,6 +28,9 @@ function createGameState(id, name, hostId) {
         turnDuration: 10,
         usedWords: new Set(),
         turnTimerHandle: null,
+        comboChangePerRound: false,
+        roundStartPlayerId: '',
+        failedCombos: new Set(),
     };
 }
 //# sourceMappingURL=types.js.map

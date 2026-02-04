@@ -65,7 +65,7 @@ class LobbyManager {
         if (!game) {
             return { success: false, reason: 'Game not found' };
         }
-        if (game.phase !== protocol_1.GamePhase.LOBBY) {
+        if (game.phase !== protocol_1.GamePhase.LOBBY && game.phase !== protocol_1.GamePhase.GAME_OVER) {
             return { success: false, reason: 'Game already started' };
         }
         if (game.playerCount >= protocol_1.MAX_PLAYERS) {
@@ -106,6 +106,9 @@ class LobbyManager {
     listGames() {
         const gameList = [];
         for (const game of this.games.values()) {
+            // Only show games in lobby or game over phase that can be joined
+            if (game.phase !== protocol_1.GamePhase.LOBBY && game.phase !== protocol_1.GamePhase.GAME_OVER)
+                continue;
             const players = game.getPlayersInfo();
             const host = players.find(p => p.isHost);
             gameList.push({
