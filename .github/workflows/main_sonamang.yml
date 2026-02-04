@@ -29,8 +29,7 @@ jobs:
 
     - name: 'Deploy to Azure Web App'
       uses: azure/webapps-deploy@v2
-      with: 
+      with:
         app-name: 'sonamang'
-        slot-name: 'production'
         publish-profile: ${{ secrets.AzureAppService_PublishProfile_acc41087fe03432d926be3ffba99dd11 }}
         package: .
