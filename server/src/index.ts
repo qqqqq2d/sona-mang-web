@@ -14,8 +14,11 @@ import { parseMessage, sendMessage } from './messages';
 const PORT = parseInt(process.env.PORT || '8080', 10);
 
 // Static file serving
-// __dirname is server/dist/server/src, so go up 4 levels to reach project root
-const STATIC_DIR = join(__dirname, '..', '..', '..', '..', 'client', 'dist');
+// __dirname is server/dist/server/src when compiled, server/src with ts-node
+const projectRoot = __dirname.includes('dist')
+  ? join(__dirname, '..', '..', '..', '..')
+  : join(__dirname, '..', '..');
+const STATIC_DIR = join(projectRoot, 'client', 'dist');
 const MIME_TYPES: Record<string, string> = {
   '.html': 'text/html',
   '.js': 'application/javascript',

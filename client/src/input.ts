@@ -69,7 +69,7 @@ function getMenuItemAtPoint(refX: number, refY: number, scaleX: number, scaleY: 
 // Must match the button positions in renderer.ts
 const BUTTON_DEFS: { [phase: string]: { [name: string]: [number, number, number, number] } } = {
   [ClientPhase.MAIN_MENU]: {
-    'info': [640 - 55, 480 - 55, 45, 45],
+    // 'info' button uses dynamic sizing, handled separately
   },
   [ClientPhase.INFO]: {
     'back': [10, 10, 95, 35],
@@ -205,14 +205,28 @@ export function setupInputHandlers(state: GameState): void {
     isTouchScrolling = false;
 
     // Check menu items (main menu only)
+    const scaleX = rect.width / REFERENCE_WIDTH;
+    const scaleY = rect.height / REFERENCE_HEIGHT;
     if (state.phase === ClientPhase.MAIN_MENU) {
-      const scaleX = rect.width / REFERENCE_WIDTH;
-      const scaleY = rect.height / REFERENCE_HEIGHT;
       state.menuPressedIndex = getMenuItemAtPoint(refX, refY, scaleX, scaleY);
     }
 
     // Check buttons
-    const button = getButtonAtPoint(state.phase, refX, refY);
+    let button = getButtonAtPoint(state.phase, refX, refY);
+
+    // Check dynamic info button (main menu) - smaller and square on mobile
+    if (state.phase === ClientPhase.MAIN_MENU && !button) {
+      const aspectRatio = rect.width / rect.height;
+      const isMobile = aspectRatio < 1.0;
+      const infoSize = isMobile ? 35 : 45;
+      const infoWidth = infoSize * scaleY / scaleX;
+      const infoMargin = isMobile ? 25 : 10;
+      if (refX >= REFERENCE_WIDTH - infoMargin - infoWidth && refX <= REFERENCE_WIDTH - infoMargin &&
+          refY >= REFERENCE_HEIGHT - 55 && refY <= REFERENCE_HEIGHT - 55 + infoSize) {
+        button = 'info';
+      }
+    }
+
     state.pressedButton = button;
   });
 
@@ -290,6 +304,21 @@ export function setupInputHandlers(state: GameState): void {
 
     // Button hover (all phases)
     let button = getButtonAtPoint(state.phase, refX, refY);
+
+    // Check dynamic info button (main menu) - smaller and square on mobile
+    if (state.phase === ClientPhase.MAIN_MENU && !button) {
+      const scaleX = rect.width / REFERENCE_WIDTH;
+      const scaleY = rect.height / REFERENCE_HEIGHT;
+      const aspectRatio = rect.width / rect.height;
+      const isMobile = aspectRatio < 1.0;
+      const infoSize = isMobile ? 35 : 45;
+      const infoWidth = infoSize * scaleY / scaleX;
+      const infoMargin = isMobile ? 25 : 10;
+      if (refX >= REFERENCE_WIDTH - infoMargin - infoWidth && refX <= REFERENCE_WIDTH - infoMargin &&
+          refY >= REFERENCE_HEIGHT - 55 && refY <= REFERENCE_HEIGHT - 55 + infoSize) {
+        button = 'info';
+      }
+    }
 
     // Check dynamic lobby waiting buttons
     if (state.phase === ClientPhase.LOBBY_WAITING && !button) {
@@ -427,8 +456,14 @@ function handleTapAt(state: GameState, tapX: number, tapY: number, winWidth: num
 }
 
 function handleMainMenuTap(state: GameState, refX: number, refY: number, scaleX: number, scaleY: number): void {
-  // Info button (bottom-right)
-  if (inTapArea(refX, refY, REFERENCE_WIDTH - 55, REFERENCE_HEIGHT - 55, 45, 45)) {
+  // Info button (bottom-right) - smaller and square on mobile
+  // Convert scale ratio to actual aspect ratio: (scaleX/scaleY) * (REF_W/REF_H) = width/height
+  const aspectRatio = (scaleX / scaleY) * (REFERENCE_WIDTH / REFERENCE_HEIGHT);
+  const isMobile = aspectRatio < 1.0;
+  const infoSize = isMobile ? 35 : 45;
+  const infoWidth = infoSize * scaleY / scaleX;
+  const infoMargin = isMobile ? 25 : 10;
+  if (inTapArea(refX, refY, REFERENCE_WIDTH - infoMargin - infoWidth, REFERENCE_HEIGHT - 55, infoWidth, infoSize)) {
     playSound('selected', 0.5);
     state.phase = ClientPhase.INFO;
     return;
@@ -452,8 +487,9 @@ function handleInfoTap(state: GameState, refX: number, refY: number): void {
 }
 
 function autoConnectToServer(state: GameState): void {
-  // Use the same host and port that served the page
-  const address = window.location.host || 'localhost:8080';
+  // In dev mode (Vite), connect to the server on port 8080
+  // In production, use the same host that served the page
+  const address = import.meta.env.DEV ? 'localhost:8080' : (window.location.host || 'localhost:8080');
 
   state.serverAddress = address;
   state.phase = ClientPhase.CONNECTING;

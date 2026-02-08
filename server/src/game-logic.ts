@@ -7,8 +7,11 @@ let comboList: string[] = [];
 
 export function loadWordList(filename: string): boolean {
   try {
-    // __dirname is server/dist/server/src when compiled, go up 3 levels to server/
-    const filePath = path.resolve(__dirname, '..', '..', '..', 'data', filename);
+    // __dirname is server/dist/server/src when compiled, server/src with ts-node
+    const serverRoot = __dirname.includes('dist')
+      ? path.resolve(__dirname, '..', '..', '..')
+      : path.resolve(__dirname, '..');
+    const filePath = path.resolve(serverRoot, 'data', filename);
     const content = fs.readFileSync(filePath, 'utf-8');
     const words = content.split('\n').filter(w => w.trim().length > 0);
     wordSet = new Set(words.map(w => w.trim().toUpperCase()));
@@ -22,8 +25,10 @@ export function loadWordList(filename: string): boolean {
 
 export function loadComboList(filename: string): boolean {
   try {
-    // __dirname is server/dist/server/src when compiled, go up 3 levels to server/
-    const filePath = path.resolve(__dirname, '..', '..', '..', 'data', filename);
+    const serverRoot = __dirname.includes('dist')
+      ? path.resolve(__dirname, '..', '..', '..')
+      : path.resolve(__dirname, '..');
+    const filePath = path.resolve(serverRoot, 'data', filename);
     const content = fs.readFileSync(filePath, 'utf-8');
     comboList = content.split('\n').filter(c => c.trim().length > 0).map(c => c.trim().toUpperCase());
     console.log(`Loaded ${comboList.length} combos from ${filename}`);

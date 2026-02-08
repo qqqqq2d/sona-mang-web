@@ -588,14 +588,18 @@ function renderMainMenu(state: GameState): void {
     ctx.fillText(menuItems[i], boxX + (boxWidth - measuredWidth) / 2, boxY + boxHeight / 2);
   }
 
-  // Info button (bottom-right)
+  // Info button (bottom-right) - smaller and square on mobile
   const infoHighlight = state.buttonHighlightOpacity?.['info'] || 0;
-  drawButton('?', REFERENCE_WIDTH - 55, REFERENCE_HEIGHT - 55, 45, 45, infoHighlight);
+  const isMobile = scale.mobileBoost > 1.05;
+  const infoSize = isMobile ? 35 : 45;
+  const infoWidth = infoSize * scale.scaleY / scale.scaleX;
+  const infoMargin = isMobile ? 25 : 10;
+  drawButton('?', REFERENCE_WIDTH - infoMargin - infoWidth, REFERENCE_HEIGHT - 55, infoWidth, infoSize, infoHighlight);
 }
 
 function renderInfo(state: GameState): void {
   // Purple background
-  ctx.fillStyle = '#11071e';
+  ctx.fillStyle = '#000007';
   ctx.fillRect(0, 0, scale.windowWidth, scale.windowHeight);
   drawVignette();
 
