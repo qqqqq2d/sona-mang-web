@@ -14,6 +14,8 @@ export interface SoundSettings {
   turn_over: boolean;
 }
 
+const MASTER_VOLUME = 3.0;
+
 let audioContext: AudioContext | null = null;
 const sounds: Map<string, SoundEffect> = new Map();
 const soundEnabled: SoundSettings = {
@@ -73,7 +75,7 @@ export function playSound(name: SoundName, volume: number = 1.0): void {
   const gainNode = audioContext.createGain();
 
   source.buffer = sound.buffer;
-  gainNode.gain.value = volume;
+  gainNode.gain.value = volume * MASTER_VOLUME;
 
   source.connect(gainNode);
   gainNode.connect(audioContext.destination);

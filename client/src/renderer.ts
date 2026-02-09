@@ -20,9 +20,9 @@ const REFERENCE_WIDTH = 640;
 const REFERENCE_HEIGHT = 480;
 
 // Colors
-const BG_COLOR = '#000005';
-const BG_MENU_COLOR = '#000009';
-const BG_GAME_OVER = '#000007';
+const BG_COLOR = '#06050c';
+const BG_MENU_COLOR = '#06050c';
+const BG_GAME_OVER = '#06050c';
 
 interface ScaleInfo {
   windowWidth: number;
@@ -470,10 +470,11 @@ function drawButton(
   ctx.stroke();
   ctx.shadowBlur = 0;
 
-  // Button text
+  // Button text - brighter on hover
   const textSize = fontSize(20);
   ctx.font = `${textSize}px sans-serif`;
-  ctx.fillStyle = '#b4b4b4';
+  const textBrightness = Math.round(180 + highlightOpacity * 75);
+  ctx.fillStyle = `rgb(${textBrightness}, ${textBrightness}, ${textBrightness})`;
   ctx.textBaseline = 'middle';
   const textWidth = ctx.measureText(text).width;
   ctx.fillText(text, bx + (bw - textWidth) / 2, by + bh / 2);
@@ -543,7 +544,7 @@ function renderMainMenu(state: GameState): void {
   const centerX = scale.windowWidth / 2;
 
   // Title
-  drawText('SÕNA MÄNG', centerX, y(80), '#ffffff', fontSize(80), true);
+  drawText('SÕNA MÄNG', centerX, y(80), '#ffffff', fontSize(60), true);
 
   // Menu options
   const menuItems = ['ALUSTA', 'LIITU'];
@@ -580,9 +581,10 @@ function renderMainMenu(state: GameState): void {
     ctx.stroke();
     ctx.shadowBlur = 0;
 
-    // Button text (centered vertically like drawButton)
+    // Button text (centered vertically like drawButton) - brighter on hover
     ctx.font = `${textSize}px sans-serif`;
-    ctx.fillStyle = '#b4b4b4';
+    const menuTextBrightness = Math.round(180 + highlightOpacity * 75);
+    ctx.fillStyle = `rgb(${menuTextBrightness}, ${menuTextBrightness}, ${menuTextBrightness})`;
     ctx.textBaseline = 'middle';
     const measuredWidth = ctx.measureText(menuItems[i]).width;
     ctx.fillText(menuItems[i], boxX + (boxWidth - measuredWidth) / 2, boxY + boxHeight / 2);
@@ -591,7 +593,7 @@ function renderMainMenu(state: GameState): void {
   // Info button (bottom-right) - smaller and square on mobile
   const infoHighlight = state.buttonHighlightOpacity?.['info'] || 0;
   const isMobile = scale.mobileBoost > 1.05;
-  const infoSize = isMobile ? 35 : 45;
+  const infoSize = isMobile ? 28 : 45;
   const infoWidth = infoSize * scale.scaleY / scale.scaleX;
   const infoMargin = isMobile ? 25 : 10;
   drawButton('?', REFERENCE_WIDTH - infoMargin - infoWidth, REFERENCE_HEIGHT - 55, infoWidth, infoSize, infoHighlight);
@@ -599,7 +601,7 @@ function renderMainMenu(state: GameState): void {
 
 function renderInfo(state: GameState): void {
   // Purple background
-  ctx.fillStyle = '#000007';
+  ctx.fillStyle = '#0a0613';
   ctx.fillRect(0, 0, scale.windowWidth, scale.windowHeight);
   drawVignette();
 
@@ -741,13 +743,8 @@ function renderLobbyWaiting(state: GameState): void {
   // Back button
   drawBackButton(state);
 
-  // Title
-  if (state.isHost) {
-    drawText('MÄNGU LOOMINE', centerX, y(70), '#ffffff', fontSize(36), true);
-    drawText(`Mäng: ${state.gameName}`, centerX, y(110), '#b4b4b4', fontSize(18), true);
-  } else {
-    drawText('OOTESAAL', centerX, y(70), '#ffffff', fontSize(36), true);
-  }
+  // Title - show game name
+  drawText(state.gameName, centerX, y(70), '#ffffff', fontSize(36), true);
 
   // Player list
   const playerCount = `Mängijad (${state.players.length}/${MAX_PLAYERS}):`;
@@ -779,7 +776,7 @@ function renderLobbyWaiting(state: GameState): void {
 
     const readyCount = getReadyCount(state);
     if (readyCount < MIN_PLAYERS) {
-      drawText(`Vaja ${MIN_PLAYERS}+ valmis`, centerX, y(400), '#787878', fontSize(16), true);
+      drawText(`Vaja ${MIN_PLAYERS} mängijat alustamiseks`, centerX, y(400), '#787878', fontSize(16), true);
     }
   } else {
     drawText('Ootan loojat...', centerX, y(400), '#787878', fontSize(16), true);

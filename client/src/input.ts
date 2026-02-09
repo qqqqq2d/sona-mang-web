@@ -218,7 +218,7 @@ export function setupInputHandlers(state: GameState): void {
     if (state.phase === ClientPhase.MAIN_MENU && !button) {
       const aspectRatio = rect.width / rect.height;
       const isMobile = aspectRatio < 1.0;
-      const infoSize = isMobile ? 35 : 45;
+      const infoSize = isMobile ? 28 : 45;
       const infoWidth = infoSize * scaleY / scaleX;
       const infoMargin = isMobile ? 25 : 10;
       if (refX >= REFERENCE_WIDTH - infoMargin - infoWidth && refX <= REFERENCE_WIDTH - infoMargin &&
@@ -311,7 +311,7 @@ export function setupInputHandlers(state: GameState): void {
       const scaleY = rect.height / REFERENCE_HEIGHT;
       const aspectRatio = rect.width / rect.height;
       const isMobile = aspectRatio < 1.0;
-      const infoSize = isMobile ? 35 : 45;
+      const infoSize = isMobile ? 28 : 45;
       const infoWidth = infoSize * scaleY / scaleX;
       const infoMargin = isMobile ? 25 : 10;
       if (refX >= REFERENCE_WIDTH - infoMargin - infoWidth && refX <= REFERENCE_WIDTH - infoMargin &&
@@ -460,7 +460,7 @@ function handleMainMenuTap(state: GameState, refX: number, refY: number, scaleX:
   // Convert scale ratio to actual aspect ratio: (scaleX/scaleY) * (REF_W/REF_H) = width/height
   const aspectRatio = (scaleX / scaleY) * (REFERENCE_WIDTH / REFERENCE_HEIGHT);
   const isMobile = aspectRatio < 1.0;
-  const infoSize = isMobile ? 35 : 45;
+  const infoSize = isMobile ? 28 : 45;
   const infoWidth = infoSize * scaleY / scaleX;
   const infoMargin = isMobile ? 25 : 10;
   if (inTapArea(refX, refY, REFERENCE_WIDTH - infoMargin - infoWidth, REFERENCE_HEIGHT - 55, infoWidth, infoSize)) {
