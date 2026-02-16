@@ -873,8 +873,8 @@ function renderGame(state: GameState): void {
 
   // Lives (top-left) - rightmost disappears first, leftmost is last life
   if (localPlayer && tintedHeartCanvas) {
-    const heartSize = 20 * scale.scale;
-    const heartSpacing = 5 * scale.scale;
+    const heartSize = 28 * scale.scale * scale.mobileBoost;
+    const heartSpacing = 5 * scale.scale * scale.mobileBoost;
     const startX = x(scale.mobileBoost > 1.05 ? 20 : 10);
     const startY = y(20);
 
@@ -952,6 +952,7 @@ function renderGame(state: GameState): void {
 
   // Player input
   if (isMyTurn(state)) {
+    drawInputBox(state.localInput || '_', centerX, y(220), 60, '#ffff00', 200);
     drawInputWithComboHighlight(state.localInput, state.currentCombo, centerX, y(220), fontSize(60));
   } else {
     const currentPlayer = getCurrentTurnPlayer(state);
@@ -1081,6 +1082,18 @@ function renderSpectatorView(state: GameState): void {
         ctx.globalAlpha = 1.0;
       }
 
+      // Glow around active player circle
+      if (isCurrentTurn) {
+        ctx.save();
+        ctx.shadowColor = 'rgba(255, 255, 255, 0.5)';
+        ctx.shadowBlur = 15;
+        ctx.beginPath();
+        ctx.arc(circleX, circleY, radius, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.fill();
+        ctx.restore();
+      }
+
       // Circle with native anti-aliasing (no pixelation at small sizes)
       ctx.beginPath();
       ctx.arc(circleX, circleY, radius, 0, Math.PI * 2);
@@ -1098,7 +1111,7 @@ function renderSpectatorView(state: GameState): void {
 
       // Lives (hearts above circle) with pulsing - matching SDL3
       if (tintedHeartCanvas && player.lives > 0) {
-        const heartSize = isCurrentTurn ? 16 : 14;
+        const heartSize = isCurrentTurn ? 22 : 18;
         const heartSpacing = 2;
         const totalWidth = player.lives * heartSize + (player.lives - 1) * heartSpacing;
         const heartsX = circleX - totalWidth / 2;
@@ -1131,8 +1144,8 @@ function renderSpectatorView(state: GameState): void {
 
   // Local player lives (top-left) - rightmost disappears first, leftmost is last life
   if (localPlayer && tintedHeartCanvas) {
-    const heartSize = 20 * scale.scale;
-    const heartSpacing = 5 * scale.scale;
+    const heartSize = 28 * scale.scale * scale.mobileBoost;
+    const heartSpacing = 5 * scale.scale * scale.mobileBoost;
     const startX = x(scale.mobileBoost > 1.05 ? 20 : 10);
     const startY = y(20);
 
