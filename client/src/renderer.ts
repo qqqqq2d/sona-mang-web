@@ -11,6 +11,9 @@ import { PlayerState, MIN_PLAYERS, MAX_PLAYERS, GameInfo } from './protocol';
 // Constants
 const ENABLE_COMBO_PULSING = true;
 const ENABLE_TEXT_SHADOW = true;
+const ENABLE_SECTOR_TIMER = false;
+const ENABLE_TIMER_PULSE = true;
+const ENABLE_TIMER_TICK_FLASH = false;
 const SHOW_TIMER = false;
 const TEXT_SHADOW_OFFSET = 2;
 const TEXT_SHADOW_COLOR = 'rgba(0, 0, 0, 0.4)';
@@ -239,6 +242,41 @@ function drawText(
   ctx.fillText(text, finalX, posY);
 }
 
+function drawTextDomino(
+  text: string,
+  posX: number,
+  posY: number,
+  size: number,
+  animTime: number,
+  centered: boolean = false,
+  baseBrightness: number = 200,
+  peakBrightness: number = 275,
+  speed: number = 2,
+  width: number = 3,
+): void {
+  ctx.font = `${size}px sans-serif`;
+  ctx.textBaseline = 'top';
+  const textWidth = ctx.measureText(text).width;
+  let charX = centered ? posX - textWidth / 2 : posX;
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    const charWidth = ctx.measureText(ch).width;
+    const phase = animTime * speed - i * 0.4;
+    const wave = Math.max(0, Math.pow(Math.max(0, Math.sin(phase * Math.PI / width)), 3));
+    const brightness = Math.min(255, Math.round(baseBrightness + wave * (peakBrightness - baseBrightness)));
+    const color = `rgb(${brightness}, ${brightness}, ${brightness})`;
+
+    if (ENABLE_TEXT_SHADOW) {
+      ctx.fillStyle = TEXT_SHADOW_COLOR;
+      ctx.fillText(ch, charX + TEXT_SHADOW_OFFSET, posY + TEXT_SHADOW_OFFSET);
+    }
+    ctx.fillStyle = color;
+    ctx.fillText(ch, charX, posY);
+    charX += charWidth;
+  }
+}
+
 function drawInputWithComboHighlight(
   input: string,
   combo: string,
@@ -442,7 +480,8 @@ function drawButton(
   refY: number,
   refWidth: number,
   refHeight: number,
-  highlightOpacity: number = 0
+  highlightOpacity: number = 0,
+  color?: [number, number, number],
 ): void {
   // Apply mobile boost to button dimensions, adjust position to keep centered
   const boost = scale.mobileBoost;
@@ -456,9 +495,10 @@ function drawButton(
 
   // Border opacity: base 0.6, highlighted up to 1.0
   const borderOpacity = 0.6 + highlightOpacity * 0.4;
-  const borderColor = `rgba(80, 50, 120, ${borderOpacity})`;
+  const [br, bg, bb] = color || [80, 50, 120];
+  const borderColor = `rgba(${br}, ${bg}, ${bb}, ${borderOpacity})`;
 
-  // Draw rounded purple border
+  // Draw rounded border
   ctx.strokeStyle = borderColor;
   ctx.lineWidth = 6;
   ctx.lineCap = 'round';
@@ -470,11 +510,19 @@ function drawButton(
   ctx.stroke();
   ctx.shadowBlur = 0;
 
-  // Button text - brighter on hover
+  // Button text - brighter on hover, tinted if color provided
   const textSize = fontSize(20);
   ctx.font = `${textSize}px sans-serif`;
-  const textBrightness = Math.round(180 + highlightOpacity * 75);
-  ctx.fillStyle = `rgb(${textBrightness}, ${textBrightness}, ${textBrightness})`;
+  if (color) {
+    const t = 0.4 + highlightOpacity * 0.2;
+    const tr = Math.round(255 * (1 - t) + br * t);
+    const tg = Math.round(255 * (1 - t) + bg * t);
+    const tb = Math.round(255 * (1 - t) + bb * t);
+    ctx.fillStyle = `rgb(${tr}, ${tg}, ${tb})`;
+  } else {
+    const textBrightness = Math.round(180 + highlightOpacity * 75);
+    ctx.fillStyle = `rgb(${textBrightness}, ${textBrightness}, ${textBrightness})`;
+  }
   ctx.textBaseline = 'middle';
   const textWidth = ctx.measureText(text).width;
   ctx.fillText(text, bx + (bw - textWidth) / 2, by + bh / 2);
@@ -485,6 +533,33 @@ function drawBackButton(state: GameState): void {
   // Move left on PC (mobileBoost ~= 1), keep at 20 on mobile
   const backX = scale.mobileBoost > 1.05 ? 20 : 10;
   drawButton('< Tagasi', backX, 10, 95, 35, highlight);
+}
+
+function drawInputBox(
+  text: string,
+  centerX: number,
+  posY: number,
+  size: number,
+  color: string,
+  minWidth: number = 200,
+): void {
+  const textSize = fontSize(size);
+  ctx.font = `${textSize}px sans-serif`;
+  const textWidth = ctx.measureText(text).width;
+  const padX = x(16);
+  const padY = y(6);
+  const boxWidth = Math.max(x(minWidth), textWidth + padX * 2);
+  const boxHeight = textSize + padY * 2;
+  const boxX = centerX - boxWidth / 2;
+  const boxY = posY - padY;
+  const radius = Math.min(boxHeight / 2, 10 * scale.mobileBoost);
+
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+  ctx.beginPath();
+  ctx.roundRect(boxX, boxY, boxWidth, boxHeight, radius);
+  ctx.fill();
+
+  drawText(text, centerX, posY, color, textSize, true);
 }
 
 export function render(state: GameState): void {
@@ -543,8 +618,9 @@ function renderMainMenu(state: GameState): void {
 
   const centerX = scale.windowWidth / 2;
 
-  // Title
-  drawText('SÕNA MÄNG', centerX, y(80), '#ffffff', fontSize(60), true);
+  // Title with flashing brightness domino effect
+  drawTextDomino('SÕNA MÄNG', centerX, y(80), fontSize(60), state.animTime, true);
+
 
   // Menu options
   const menuItems = ['ALUSTA', 'LIITU'];
@@ -628,7 +704,7 @@ function renderInfo(state: GameState): void {
   ];
 
   let yPos = y(150);
-  const lineHeight = y(28);
+  const lineHeight = y(25);
 
   for (const line of infoLines) {
     drawText(line, centerX, yPos, '#c8c8c8', fontSize(19), true);
@@ -647,14 +723,15 @@ function renderServerConnect(state: GameState): void {
   drawBackButton(state);
 
   const title = state.joiningGame ? 'LIITU MÄNGUGA' : 'LOO MÄNG';
-  drawText(title, centerX, y(80), '#ffffff', fontSize(40), true);
+  //drawText(title, centerX, y(80), '#ffffff', fontSize(40), true);
+  drawTextDomino(title, centerX, y(60), fontSize(40), state.animTime, true, 220, 255, 2, 2);
 
   // Player name
   drawText('Sinu nimi:', centerX, y(160), '#ffffff', fontSize(20), true);
 
 
   const nameDisplay = state.playerName + '|';
-  drawText(nameDisplay, centerX, y(195), '#ffff00', fontSize(24), true);
+  drawInputBox(nameDisplay, centerX, y(195), 24, '#ffff00');
 
   // Continue button
   const continueHighlight = state.buttonHighlightOpacity?.['continue'] || 0;
@@ -683,14 +760,14 @@ function renderLobbyCreate(state: GameState): void {
   // Back button
   drawBackButton(state);
 
-  drawText('LOO MÄNG', centerX, y(80), '#ffffff', fontSize(40), true);
+  drawTextDomino('LOO MÄNG', centerX, y(60), fontSize(40), state.animTime, true, 220, 255, 2, 2);
 
   // Game name
   drawText('Mängu nimi:', centerX, y(160), '#ffffff', fontSize(20), true);
 
 
   const nameDisplay = state.gameName + '|';
-  drawText(nameDisplay, centerX, y(195), '#ffff00', fontSize(24), true);
+  drawInputBox(nameDisplay, centerX, y(195), 24, '#ffff00');
 
   // Create button
   const createHighlight = state.buttonHighlightOpacity?.['create'] || 0;
@@ -712,7 +789,7 @@ function renderLobbyJoin(state: GameState): void {
   const refreshHighlight = state.buttonHighlightOpacity?.['refresh'] || 0;
   drawButton('Uuenda', REFERENCE_WIDTH - 90, 10, 80, 35, refreshHighlight);
 
-  drawText('LIITU MÄNGUGA', centerX, y(80), '#ffffff', fontSize(40), true);
+  drawTextDomino('LIITU MÄNGUGA', centerX, y(60), fontSize(40), state.animTime, true, 220, 255, 2, 2);
 
   // Games list
   const gamesList = state.gamesList;
@@ -744,7 +821,8 @@ function renderLobbyWaiting(state: GameState): void {
   drawBackButton(state);
 
   // Title - show game name
-  drawText(state.gameName, centerX, y(70), '#ffffff', fontSize(36), true);
+  //drawText(state.gameName, centerX, y(70), '#ffffff', fontSize(36), true);
+  drawTextDomino(state.gameName, centerX, y(60), fontSize(40), state.animTime, true, 220, 255, 2, 2);
 
   // Player list
   const playerCount = `Mängijad (${state.players.length}/${MAX_PLAYERS}):`;
@@ -752,7 +830,7 @@ function renderLobbyWaiting(state: GameState): void {
 
   let yPos = y(170);
   for (const player of state.players) {
-    const status = player.state === PlayerState.READY ? '[VALMIS]' : '[...]';
+    const status = player.state === PlayerState.READY ? '✅' : '❌';
     const hostTag = player.isHost ? ' (LOOJA)' : '';
     const playerLine = `${player.name}${hostTag} ${status}`;
 
@@ -765,9 +843,11 @@ function renderLobbyWaiting(state: GameState): void {
 
   // Buttons - extra spacing on mobile
   const buttonSpacing = 10 + (scale.mobileBoost - 1) * 40;
-  const readyText = (getLocalPlayer(state)?.state === PlayerState.READY) ? 'Oota' : 'Valmis';
+  const isReady = getLocalPlayer(state)?.state === PlayerState.READY;
+  const readyText = isReady ? 'Oota' : 'Valmis';
+  const readyColor: [number, number, number] = isReady ? [50, 160, 50] : [160, 50, 50];
   const readyHighlight = state.buttonHighlightOpacity?.['ready'] || 0;
-  drawButton(readyText, REFERENCE_WIDTH / 2 - 100 - buttonSpacing, 340, 100, 40, readyHighlight);
+  drawButton(readyText, REFERENCE_WIDTH / 2 - 100 - buttonSpacing, 340, 100, 40, readyHighlight, readyColor);
 
   // Start button (host only)
   if (state.isHost) {
@@ -776,7 +856,7 @@ function renderLobbyWaiting(state: GameState): void {
 
     const readyCount = getReadyCount(state);
     if (readyCount < MIN_PLAYERS) {
-      drawText(`Vaja ${MIN_PLAYERS} mängijat alustamiseks`, centerX, y(400), '#787878', fontSize(16), true);
+      drawText(`Vaja ${MIN_PLAYERS}+ mängijat alustamiseks`, centerX, y(400), '#787878', fontSize(16), true);
     }
   } else {
     drawText('Ootan loojat...', centerX, y(400), '#787878', fontSize(16), true);
@@ -840,12 +920,12 @@ function renderGame(state: GameState): void {
   // Pulse effect: frequency increases as timer decreases (0.1Hz at 10s, 2.1Hz at 0s)
   const turnElapsed = state.turnDuration - state.turnTimer;
   const pulseFrequency = 0.1 + (1 - timeRatio) * 1.5;
-  const pulseAmplitude = 0.2 * timerOpacity;
+  const pulseAmplitude = ENABLE_TIMER_PULSE ? 0.2 * timerOpacity : 0;
   const timerPulse = 1.0 + pulseAmplitude * Math.sin(turnElapsed * pulseFrequency * Math.PI * 2);
   const timerRadius = baseTimerRadius * timerPulse;
 
   // Draw sector
-  if (timerOpacity > 0) {
+  if (ENABLE_SECTOR_TIMER && timerOpacity > 0) {
     ctx.beginPath();
     ctx.moveTo(centerX, timerY);
     ctx.arc(centerX, timerY, timerRadius, startAngle, endAngle);
@@ -855,7 +935,7 @@ function renderGame(state: GameState): void {
   }
 
   // Timer tick flash - expanding ring with radial gradient
-  if (state.timerTickFlashOpacity > 0) {
+  if (ENABLE_TIMER_TICK_FLASH && state.timerTickFlashOpacity > 0) {
     const flashProgress = 1 - state.timerTickFlashOpacity;
     const innerRadius = timerRadius * (1 + flashProgress * 30);
     const outerRadius = innerRadius + 1 * scale.scale;
@@ -934,12 +1014,12 @@ function renderSpectatorView(state: GameState): void {
   // Pulse effect: frequency increases as timer decreases (0.1Hz at 10s, 2.1Hz at 0s)
   const turnElapsed = state.turnDuration - state.turnTimer;
   const pulseFrequency = 0.1 + (1 - timeRatio) * 2.0;
-  const pulseAmplitude = 0.2 * timerOpacity;
+  const pulseAmplitude = ENABLE_TIMER_PULSE ? 0.2 * timerOpacity : 0;
   const timerPulse = 1.0 + pulseAmplitude * Math.sin(turnElapsed * pulseFrequency * Math.PI * 2);
   const timerRadius = baseTimerRadius * timerPulse;
 
   // Draw sector
-  if (timerOpacity > 0) {
+  if (ENABLE_SECTOR_TIMER && timerOpacity > 0) {
     ctx.beginPath();
     ctx.moveTo(timerX, timerY);
     ctx.arc(timerX, timerY, timerRadius, startAngle, endAngle);
@@ -949,7 +1029,7 @@ function renderSpectatorView(state: GameState): void {
   }
 
   // Timer tick flash - expanding ring with radial gradient
-  if (state.timerTickFlashOpacity > 0) {
+  if (ENABLE_TIMER_TICK_FLASH && state.timerTickFlashOpacity > 0) {
     const flashProgress = 1 - state.timerTickFlashOpacity;
     const innerRadius = timerRadius * (1 + flashProgress * 30);
     const outerRadius = innerRadius + 1 * scale.scale;

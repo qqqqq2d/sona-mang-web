@@ -380,13 +380,13 @@ function handleTextInput(state: GameState, text: string): void {
   } else if (state.phase === ClientPhase.SERVER_CONNECT) {
     // Only player name input
     for (const char of text) {
-      if (state.playerName.length < 16 && /[a-zA-Z0-9_\- ]/.test(char)) {
+      if (state.playerName.length < 16 && /[a-zA-ZäöüõšžÄÖÜÕŠŽ0-9_\- ]/.test(char)) {
         state.playerName += char;
       }
     }
   } else if (state.phase === ClientPhase.LOBBY_CREATE) {
     for (const char of text) {
-      if (state.gameName.length < 20 && /[a-zA-Z0-9_\- ]/.test(char)) {
+      if (state.gameName.length < 20 && /[a-zA-ZäöüõšžÄÖÜÕŠŽ0-9_\- ]/.test(char)) {
         state.gameName += char;
       }
     }
@@ -822,7 +822,7 @@ function handleServerConnectInput(e: KeyboardEvent, state: GameState): void {
   // Text input for player name
   if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
     const char = e.key;
-    if (state.playerName.length < 16 && /[a-zA-Z0-9_\- ]/.test(char)) {
+    if (state.playerName.length < 16 && /[a-zA-ZäöüõšžÄÖÜÕŠŽ0-9_\- ]/.test(char)) {
       state.playerName += char;
     }
   }
@@ -849,7 +849,7 @@ function handleLobbyCreateInput(e: KeyboardEvent, state: GameState): void {
 
   // Text input for game name
   if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
-    if (state.gameName.length < 20 && /[a-zA-Z0-9_\- ]/.test(e.key)) {
+    if (state.gameName.length < 20 && /[a-zA-ZäöüõšžÄÖÜÕŠŽ0-9_\- ]/.test(e.key)) {
       state.gameName += e.key;
     }
   }

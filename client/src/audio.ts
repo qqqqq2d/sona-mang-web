@@ -14,7 +14,7 @@ export interface SoundSettings {
   turn_over: boolean;
 }
 
-const MASTER_VOLUME = 3.0;
+const MASTER_VOLUME = 4.0;
 
 let audioContext: AudioContext | null = null;
 const sounds: Map<string, SoundEffect> = new Map();

@@ -61,7 +61,7 @@ function update(deltaTime: number): void {
     // Timer tick sound logic - play at 5, 3, 2, 1 seconds
     const prev = state.prevTurnTimer;
     const curr = state.turnTimer;
-    const tickTimes = [5, 3, 2, 1];
+    const tickTimes = [10, 9, 8, 7, 6, 5, 4, 3, 2, 1];
 
     // Reset prevTurnTimer when turn changes
     if (state.currentTurnPlayerId !== state.prevTurnPlayerId && state.currentTurnPlayerId !== '') {
@@ -71,7 +71,7 @@ function update(deltaTime: number): void {
       // Play at specific second thresholds
       for (const t of tickTimes) {
         if (prev > t && curr <= t) {
-          playSound('timer_tick', 0.2);
+          playSound('timer_tick', 0.05);
           state.timerTickFlash = true;
           state.timerTickFlashOpacity = 1.0;
           break;
