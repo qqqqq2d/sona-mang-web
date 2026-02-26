@@ -483,15 +483,11 @@ function drawButton(
   highlightOpacity: number = 0,
   color?: [number, number, number],
 ): void {
-  // Apply mobile boost to button dimensions, adjust position to keep centered
-  const boost = scale.mobileBoost;
-  const originalW = x(refWidth);
-  const originalH = y(refHeight);
-  const bw = originalW * boost;
-  const bh = originalH * boost;
-  const bx = x(refX) - (bw - originalW) / 2;
-  const by = y(refY) - (bh - originalH) / 2;
-  const boxRadius = Math.min(bh / 2, 20 * boost); // Pill-shaped, capped
+  const bw = x(refWidth);
+  const bh = y(refHeight);
+  const bx = x(refX);
+  const by = y(refY);
+  const boxRadius = Math.min(bh / 2, 20); // Pill-shaped, capped
 
   // Border opacity: base 0.6, highlighted up to 1.0
   const borderOpacity = 0.6 + highlightOpacity * 0.4;
@@ -552,7 +548,7 @@ function drawInputBox(
   const boxHeight = textSize + padY * 2;
   const boxX = centerX - boxWidth / 2;
   const boxY = posY - padY;
-  const radius = Math.min(boxHeight / 2, 10 * scale.mobileBoost);
+  const radius = Math.min(boxHeight / 2, 10);
 
   ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
   ctx.beginPath();
@@ -639,7 +635,7 @@ function renderMainMenu(state: GameState): void {
     const boxHeight = textSize + boxPaddingY * 2;
     const boxX = centerX - boxWidth / 2;
     const boxY = menuY[i] - boxPaddingY;
-    const pillRadius = Math.min(boxHeight / 2, 20 * scale.mobileBoost);
+    const pillRadius = Math.min(boxHeight / 2, 20);
 
     // Border opacity: base 0.6, highlighted up to 1.0
     const borderOpacity = 0.6 + highlightOpacity * 0.4;
