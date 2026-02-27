@@ -21,8 +21,8 @@ const TEXT_SHADOW_COLOR = 'rgba(0, 0, 0, 0.4)';
 // Reference resolution (matches SDL3 version)
 const REFERENCE_HEIGHT = 480;
 function refWidth(): number {
-  if (window.matchMedia('(pointer: coarse)').matches) return 420;
-  if (window.innerWidth < 800) return 420;
+  if (window.matchMedia('(pointer: coarse)').matches) return 450;
+  if (window.innerWidth < 800) return 450;
   return 640;
 }
 
@@ -811,7 +811,7 @@ function renderLobbyWaiting(state: GameState): void {
 
   // Title - show game name
   //drawText(state.gameName, centerX, y(70), '#ffffff', fontSize(36), true);
-  drawTextDomino(state.gameName, centerX, y(60), fontSize(40), state.animTime, true, 220, 255, 2, 2);
+  drawTextDomino(state.gameName, centerX, y(80), fontSize(40), state.animTime, true, 220, 255, 2, 2);
 
   // Player list
   const playerCount = `Mängijad (${state.players.length}/${MAX_PLAYERS}):`;

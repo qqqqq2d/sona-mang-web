@@ -91,6 +91,7 @@ export interface GameState {
 
   // Game over
   failedCombos: FailedComboInfo[];
+  localFailedCombos: Set<string>;
   showFailedCombos: boolean;
   failedCombosScrollY: number;
 
@@ -162,6 +163,7 @@ export function createInitialState(): GameState {
     joiningGame: false,
 
     failedCombos: [],
+    localFailedCombos: new Set(),
     showFailedCombos: false,
     failedCombosScrollY: 0,
 
@@ -206,6 +208,7 @@ export function resetGameState(state: GameState): void {
   state.currentTurnPlayerId = '';
   state.localInput = '';
   state.turnTimer = state.turnDuration;
+  state.localFailedCombos = new Set();
   state.wrongAnswerFlash = false;
   state.wrongAnswerOpacity = 0;
   state.wrongAnswerOpacityUp = true;

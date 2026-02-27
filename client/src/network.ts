@@ -244,7 +244,7 @@ function handleMessage(state: GameState, message: ServerMessage): void {
 
     case MessageType.GAME_OVER:
       state.phase = ClientPhase.GAME_OVER;
-      state.failedCombos = message.failedCombos || [];
+      state.failedCombos = (message.failedCombos || []).filter(fc => state.localFailedCombos.has(fc.combo));
       state.showFailedCombos = false;
       blurHiddenInput();
       break;
@@ -290,6 +290,7 @@ function handleTurnResult(
         state.timeoutFlash = true;
         state.timeoutOpacity = 0;
         state.timeoutOpacityUp = true;
+        state.localFailedCombos.add(state.currentCombo);
       }
       // Timer tick flash and sound for all timeouts (including spectator view)
       state.timerTickFlash = true;
