@@ -713,7 +713,7 @@ function renderServerConnect(state: GameState): void {
 
   const title = state.joiningGame ? 'LIITU MÄNGUGA' : 'LOO MÄNG';
   //drawText(title, centerX, y(80), '#ffffff', fontSize(40), true);
-  drawTextDomino(title, centerX, y(60), fontSize(40), state.animTime, true, 220, 255, 2, 2);
+  drawTextDomino(title, centerX, y(80), fontSize(40), state.animTime, true, 220, 255, 2, 2);
 
   // Player name
   drawText('Sinu nimi:', centerX, y(160), '#ffffff', fontSize(20), true);
@@ -749,7 +749,7 @@ function renderLobbyCreate(state: GameState): void {
   // Back button
   drawBackButton(state);
 
-  drawTextDomino('LOO MÄNG', centerX, y(60), fontSize(40), state.animTime, true, 220, 255, 2, 2);
+  drawTextDomino('LOO MÄNG', centerX, y(80), fontSize(40), state.animTime, true, 220, 255, 2, 2);
 
   // Game name
   drawText('Mängu nimi:', centerX, y(160), '#ffffff', fontSize(20), true);
@@ -778,7 +778,7 @@ function renderLobbyJoin(state: GameState): void {
   const refreshHighlight = state.buttonHighlightOpacity?.['refresh'] || 0;
   drawButton('Uuenda', refWidth() - 90, 10, 80, 35, refreshHighlight);
 
-  drawTextDomino('LIITU MÄNGUGA', centerX, y(60), fontSize(40), state.animTime, true, 220, 255, 2, 2);
+  drawTextDomino('LIITU MÄNGUGA', centerX, y(80), fontSize(40), state.animTime, true, 220, 255, 2, 2);
 
   // Games list
   const gamesList = state.gamesList;
