@@ -19,8 +19,12 @@ const TEXT_SHADOW_OFFSET = 2;
 const TEXT_SHADOW_COLOR = 'rgba(0, 0, 0, 0.4)';
 
 // Reference resolution (matches SDL3 version)
-const REFERENCE_WIDTH = 640;
 const REFERENCE_HEIGHT = 480;
+function refWidth(): number {
+  if (window.matchMedia('(pointer: coarse)').matches) return 420;
+  if (window.innerWidth < 800) return 420;
+  return 640;
+}
 
 // Colors
 const BG_COLOR = '#06050c';
@@ -177,19 +181,10 @@ function handleResize(): void {
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
 
-  const scaleX = width / REFERENCE_WIDTH;
+  const scaleX = width / refWidth();
   const scaleY = height / REFERENCE_HEIGHT;
 
-  // Calculate mobile boost for narrow screens
-  // On narrow/portrait screens, boost text and UI elements
-  const aspectRatio = width / height;
-  let mobileBoost = 1.0;
-  if (aspectRatio < 1.0) {
-    // Portrait mode: boost more as screen gets narrower
-    // At aspect ratio 0.5 (very narrow), boost is ~1.4
-    // At aspect ratio 1.0 (square), boost is 1.0
-    mobileBoost = 1.0 + (1.0 - aspectRatio) * 0.4;
-  }
+  const mobileBoost = 1.0;
 
   scale = {
     windowWidth: width,
@@ -225,7 +220,7 @@ function drawText(
   size: number,
   centered: boolean = false
 ): void {
-  ctx.font = `${size}px sans-serif`;
+  ctx.font = `${size}px 'Open Sans', sans-serif`;
   ctx.fillStyle = color;
   ctx.textBaseline = 'top';
 
@@ -253,8 +248,9 @@ function drawTextDomino(
   peakBrightness: number = 275,
   speed: number = 2,
   width: number = 3,
+  fontWeight: string = 'normal',
 ): void {
-  ctx.font = `${size}px sans-serif`;
+  ctx.font = `${fontWeight} ${size}px 'Open Sans', sans-serif`;
   ctx.textBaseline = 'top';
   const textWidth = ctx.measureText(text).width;
   let charX = centered ? posX - textWidth / 2 : posX;
@@ -289,7 +285,7 @@ function drawInputWithComboHighlight(
     return;
   }
 
-  ctx.font = `${size}px sans-serif`;
+  ctx.font = `${size}px 'Open Sans', sans-serif`;
   ctx.textBaseline = 'top';
 
   const comboIndex = input.toUpperCase().indexOf(combo.toUpperCase());
@@ -347,7 +343,7 @@ function drawWordsWithComboHighlight(
     return;
   }
 
-  ctx.font = `${size}px sans-serif`;
+  ctx.font = `${size}px 'Open Sans', sans-serif`;
   ctx.textBaseline = 'top';
 
   const normalColor = '#aaaaaa';
@@ -420,7 +416,7 @@ function drawScaledText(
   shadowOffset: number = TEXT_SHADOW_OFFSET
 ): void {
   ctx.save();
-  ctx.font = `${size}px sans-serif`;
+  ctx.font = `${size}px 'Open Sans', sans-serif`;
   ctx.fillStyle = color;
   ctx.textBaseline = 'top';
 
@@ -508,7 +504,7 @@ function drawButton(
 
   // Button text - brighter on hover, tinted if color provided
   const textSize = fontSize(20);
-  ctx.font = `${textSize}px sans-serif`;
+  ctx.font = `${textSize}px 'Open Sans', sans-serif`;
   if (color) {
     const t = 0.4 + highlightOpacity * 0.2;
     const tr = Math.round(255 * (1 - t) + br * t);
@@ -526,8 +522,7 @@ function drawButton(
 
 function drawBackButton(state: GameState): void {
   const highlight = state.buttonHighlightOpacity?.['back'] || 0;
-  // Move left on PC (mobileBoost ~= 1), keep at 20 on mobile
-  const backX = scale.mobileBoost > 1.05 ? 20 : 10;
+  const backX = 10;
   drawButton('< Tagasi', backX, 10, 95, 35, highlight);
 }
 
@@ -540,7 +535,7 @@ function drawInputBox(
   minWidth: number = 200,
 ): void {
   const textSize = fontSize(size);
-  ctx.font = `${textSize}px sans-serif`;
+  ctx.font = `${textSize}px 'Open Sans', sans-serif`;
   const textWidth = ctx.measureText(text).width;
   const padX = x(16);
   const padY = y(6);
@@ -615,7 +610,7 @@ function renderMainMenu(state: GameState): void {
   const centerX = scale.windowWidth / 2;
 
   // Title with flashing brightness domino effect
-  drawTextDomino('SÕNA MÄNG', centerX, y(80), fontSize(60), state.animTime, true);
+  drawTextDomino('SÕNA MÄNG', centerX, y(80), fontSize(60), state.animTime, true, 200, 275, 2, 3, '600');
 
 
   // Menu options
@@ -629,7 +624,7 @@ function renderMainMenu(state: GameState): void {
     const highlightOpacity = state.menuHighlightOpacity[i] || 0;
 
     // Measure text width for box sizing (text already includes mobile boost via fontSize)
-    ctx.font = `${textSize}px sans-serif`;
+    ctx.font = `${textSize}px 'Open Sans', sans-serif`;
     const textWidth = ctx.measureText(menuItems[i]).width;
     const boxWidth = textWidth + boxPaddingX * 2;
     const boxHeight = textSize + boxPaddingY * 2;
@@ -654,7 +649,7 @@ function renderMainMenu(state: GameState): void {
     ctx.shadowBlur = 0;
 
     // Button text (centered vertically like drawButton) - brighter on hover
-    ctx.font = `${textSize}px sans-serif`;
+    ctx.font = `${textSize}px 'Open Sans', sans-serif`;
     const menuTextBrightness = Math.round(180 + highlightOpacity * 75);
     ctx.fillStyle = `rgb(${menuTextBrightness}, ${menuTextBrightness}, ${menuTextBrightness})`;
     ctx.textBaseline = 'middle';
@@ -662,13 +657,11 @@ function renderMainMenu(state: GameState): void {
     ctx.fillText(menuItems[i], boxX + (boxWidth - measuredWidth) / 2, boxY + boxHeight / 2);
   }
 
-  // Info button (bottom-right) - smaller and square on mobile
   const infoHighlight = state.buttonHighlightOpacity?.['info'] || 0;
-  const isMobile = scale.mobileBoost > 1.05;
-  const infoSize = isMobile ? 28 : 45;
+  const infoSize = 45;
   const infoWidth = infoSize * scale.scaleY / scale.scaleX;
-  const infoMargin = isMobile ? 25 : 10;
-  drawButton('?', REFERENCE_WIDTH - infoMargin - infoWidth, REFERENCE_HEIGHT - 55, infoWidth, infoSize, infoHighlight);
+  const infoMargin = 10;
+  drawButton('?', refWidth() - infoMargin - infoWidth, REFERENCE_HEIGHT - 55, infoWidth, infoSize, infoHighlight);
 }
 
 function renderInfo(state: GameState): void {
@@ -731,7 +724,7 @@ function renderServerConnect(state: GameState): void {
 
   // Continue button
   const continueHighlight = state.buttonHighlightOpacity?.['continue'] || 0;
-  drawButton('Jätka', REFERENCE_WIDTH / 2 - 60, 260, 120, 40, continueHighlight);
+  drawButton('Jätka', refWidth() / 2 - 60, 260, 120, 40, continueHighlight);
 
 }
 
@@ -767,7 +760,7 @@ function renderLobbyCreate(state: GameState): void {
 
   // Create button
   const createHighlight = state.buttonHighlightOpacity?.['create'] || 0;
-  drawButton('Loo', REFERENCE_WIDTH / 2 - 60, 260, 120, 40, createHighlight);
+  drawButton('Loo', refWidth() / 2 - 60, 260, 120, 40, createHighlight);
 
 }
 
@@ -783,7 +776,7 @@ function renderLobbyJoin(state: GameState): void {
 
   // Refresh button
   const refreshHighlight = state.buttonHighlightOpacity?.['refresh'] || 0;
-  drawButton('Uuenda', REFERENCE_WIDTH - 90, 10, 80, 35, refreshHighlight);
+  drawButton('Uuenda', refWidth() - 90, 10, 80, 35, refreshHighlight);
 
   drawTextDomino('LIITU MÄNGUGA', centerX, y(60), fontSize(40), state.animTime, true, 220, 255, 2, 2);
 
@@ -837,18 +830,17 @@ function renderLobbyWaiting(state: GameState): void {
     yPos += y(28);
   }
 
-  // Buttons - extra spacing on mobile
-  const buttonSpacing = 10 + (scale.mobileBoost - 1) * 40;
+  const buttonSpacing = 10;
   const isReady = getLocalPlayer(state)?.state === PlayerState.READY;
   const readyText = isReady ? 'Oota' : 'Valmis';
   const readyColor: [number, number, number] = isReady ? [50, 160, 50] : [160, 50, 50];
   const readyHighlight = state.buttonHighlightOpacity?.['ready'] || 0;
-  drawButton(readyText, REFERENCE_WIDTH / 2 - 100 - buttonSpacing, 340, 100, 40, readyHighlight, readyColor);
+  drawButton(readyText, refWidth() / 2 - 100 - buttonSpacing, 340, 100, 40, readyHighlight, readyColor);
 
   // Start button (host only)
   if (state.isHost) {
     const startHighlight = state.buttonHighlightOpacity?.['start'] || 0;
-    drawButton('Alusta', REFERENCE_WIDTH / 2 + buttonSpacing, 340, 100, 40, startHighlight);
+    drawButton('Alusta', refWidth() / 2 + buttonSpacing, 340, 100, 40, startHighlight);
 
     const readyCount = getReadyCount(state);
     if (readyCount < MIN_PLAYERS) {
@@ -871,7 +863,7 @@ function renderGame(state: GameState): void {
   if (localPlayer && tintedHeartCanvas) {
     const heartSize = 28 * scale.scale * scale.mobileBoost;
     const heartSpacing = 5 * scale.scale * scale.mobileBoost;
-    const startX = x(scale.mobileBoost > 1.05 ? 20 : 10);
+    const startX = x(10);
     const startY = y(20);
 
     for (let i = 0; i < localPlayer.lives; i++) {
@@ -1142,7 +1134,7 @@ function renderSpectatorView(state: GameState): void {
   if (localPlayer && tintedHeartCanvas) {
     const heartSize = 28 * scale.scale * scale.mobileBoost;
     const heartSpacing = 5 * scale.scale * scale.mobileBoost;
-    const startX = x(scale.mobileBoost > 1.05 ? 20 : 10);
+    const startX = x(10);
     const startY = y(20);
 
     for (let i = 0; i < localPlayer.lives; i++) {
@@ -1233,7 +1225,7 @@ function renderGameOver(state: GameState): void {
 
     // Back button
     const backHighlight = state.buttonHighlightOpacity?.['back'] || 0;
-    drawButton('Tagasi', REFERENCE_WIDTH / 2 - 60, 400, 120, 40, backHighlight);
+    drawButton('Tagasi', refWidth() / 2 - 60, 400, 120, 40, backHighlight);
     return;
   }
 
@@ -1259,12 +1251,12 @@ function renderGameOver(state: GameState): void {
   // Continue button
   const buttonText = state.players.length > 1 ? 'Ootesaali' : 'Menüüsse';
   const continueHighlight = state.buttonHighlightOpacity?.['continue'] || 0;
-  drawButton(buttonText, REFERENCE_WIDTH / 2 - 80, 360, 160, 45, continueHighlight);
+  drawButton(buttonText, refWidth() / 2 - 80, 360, 160, 45, continueHighlight);
 
   // View Failed Combos button (only if there are failed combos)
   if (state.failedCombos.length > 0) {
     const failedHighlight = state.buttonHighlightOpacity?.['failed'] || 0;
-    drawButton('Vaata vigu', REFERENCE_WIDTH / 2 - 70, 420, 140, 40, failedHighlight);
+    drawButton('Vaata vigu', refWidth() / 2 - 70, 420, 140, 40, failedHighlight);
   }
 }
 

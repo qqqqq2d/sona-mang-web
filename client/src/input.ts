@@ -4,8 +4,12 @@ import * as network from './network';
 import { playSound } from './audio';
 
 // Reference resolution for touch calculations (must match renderer.ts)
-const REFERENCE_WIDTH = 640;
 const REFERENCE_HEIGHT = 480;
+function refWidth(): number {
+  if (isMobile()) return 420;
+  if (window.innerWidth < 500) return 420;
+  return 640;
+}
 
 // Mobile detection (coarse pointer = touch screen)
 const isMobile = (): boolean => {
@@ -29,23 +33,18 @@ function getMenuItemAtPoint(refX: number, refY: number, scaleX: number, scaleY: 
   const ctx = getMeasureContext();
   if (!ctx) return -1;
 
-  const centerX = 320; // REFERENCE_WIDTH / 2
+  const centerX = refWidth() / 2;
   const menuPositions = [200, 260]; // Must match renderer menuY values: [y(200), y(260)]
   const menuItems = ['ALUSTA', 'LIITU'];
   const boxPaddingX = 16; // Must match renderer: x(16)
   const boxPaddingY = 6;  // Must match renderer: y(6)
 
-  // Calculate mobile boost to match renderer exactly
-  const aspectRatio = scaleX / scaleY * (REFERENCE_WIDTH / REFERENCE_HEIGHT);
-  const mobileBoost = aspectRatio < 1.0 ? 1.0 + (1.0 - aspectRatio) * 0.4 : 1.0;
-
   // Renderer uses scale = min(scaleX, scaleY) for font size
   const scale = Math.min(scaleX, scaleY);
 
-  // Match renderer's text size calculation: fontSize(32) = 32 * scale * mobileBoost
-  const textSize = Math.round(32 * scale * mobileBoost);
+  const textSize = Math.round(32 * scale);
 
-  ctx.font = `${textSize}px sans-serif`;
+  ctx.font = `${textSize}px 'Open Sans', sans-serif`;
 
   for (let i = 0; i < menuPositions.length; i++) {
     // textWidth is in screen pixels, divide by scaleX to get reference width
@@ -195,9 +194,9 @@ export function setupInputHandlers(state: GameState): void {
     const rect = canvas.getBoundingClientRect();
     const touchX = touch.clientX - rect.left;
     const touchY = touch.clientY - rect.top;
-    const refX = (touchX / rect.width) * REFERENCE_WIDTH;
+    const refX = (touchX / rect.width) * refWidth();
     const refY = (touchY / rect.height) * REFERENCE_HEIGHT;
-    const scale = Math.min(rect.width / REFERENCE_WIDTH, rect.height / REFERENCE_HEIGHT);
+    const scale = Math.min(rect.width / refWidth(), rect.height / REFERENCE_HEIGHT);
 
     // Track for scrolling
     touchStartY = touch.clientY;
@@ -205,7 +204,7 @@ export function setupInputHandlers(state: GameState): void {
     isTouchScrolling = false;
 
     // Check menu items (main menu only)
-    const scaleX = rect.width / REFERENCE_WIDTH;
+    const scaleX = rect.width / refWidth();
     const scaleY = rect.height / REFERENCE_HEIGHT;
     if (state.phase === ClientPhase.MAIN_MENU) {
       state.menuPressedIndex = getMenuItemAtPoint(refX, refY, scaleX, scaleY);
@@ -214,14 +213,12 @@ export function setupInputHandlers(state: GameState): void {
     // Check buttons
     let button = getButtonAtPoint(state.phase, refX, refY);
 
-    // Check dynamic info button (main menu) - smaller and square on mobile
+    // Check dynamic info button (main menu)
     if (state.phase === ClientPhase.MAIN_MENU && !button) {
-      const aspectRatio = rect.width / rect.height;
-      const isMobile = aspectRatio < 1.0;
-      const infoSize = isMobile ? 28 : 45;
+      const infoSize = 45;
       const infoWidth = infoSize * scaleY / scaleX;
-      const infoMargin = isMobile ? 25 : 10;
-      if (refX >= REFERENCE_WIDTH - infoMargin - infoWidth && refX <= REFERENCE_WIDTH - infoMargin &&
+      const infoMargin = 10;
+      if (refX >= refWidth() - infoMargin - infoWidth && refX <= refWidth() - infoMargin &&
           refY >= REFERENCE_HEIGHT - 55 && refY <= REFERENCE_HEIGHT - 55 + infoSize) {
         button = 'info';
       }
@@ -281,13 +278,13 @@ export function setupInputHandlers(state: GameState): void {
     const mouseY = e.clientY - rect.top;
 
     // Convert to reference coordinates
-    const refX = (mouseX / rect.width) * REFERENCE_WIDTH;
+    const refX = (mouseX / rect.width) * refWidth();
     const refY = (mouseY / rect.height) * REFERENCE_HEIGHT;
-    const scale = Math.min(rect.width / REFERENCE_WIDTH, rect.height / REFERENCE_HEIGHT);
+    const scale = Math.min(rect.width / refWidth(), rect.height / REFERENCE_HEIGHT);
 
     // Main menu hover
     if (state.phase === ClientPhase.MAIN_MENU) {
-      const scaleX = rect.width / REFERENCE_WIDTH;
+      const scaleX = rect.width / refWidth();
       const scaleY = rect.height / REFERENCE_HEIGHT;
       const newSelection = getMenuItemAtPoint(refX, refY, scaleX, scaleY);
       state.menuHoveredIndex = newSelection;
@@ -305,16 +302,14 @@ export function setupInputHandlers(state: GameState): void {
     // Button hover (all phases)
     let button = getButtonAtPoint(state.phase, refX, refY);
 
-    // Check dynamic info button (main menu) - smaller and square on mobile
+    // Check dynamic info button (main menu)
     if (state.phase === ClientPhase.MAIN_MENU && !button) {
-      const scaleX = rect.width / REFERENCE_WIDTH;
+      const scaleX = rect.width / refWidth();
       const scaleY = rect.height / REFERENCE_HEIGHT;
-      const aspectRatio = rect.width / rect.height;
-      const isMobile = aspectRatio < 1.0;
-      const infoSize = isMobile ? 28 : 45;
+      const infoSize = 45;
       const infoWidth = infoSize * scaleY / scaleX;
-      const infoMargin = isMobile ? 25 : 10;
-      if (refX >= REFERENCE_WIDTH - infoMargin - infoWidth && refX <= REFERENCE_WIDTH - infoMargin &&
+      const infoMargin = 10;
+      if (refX >= refWidth() - infoMargin - infoWidth && refX <= refWidth() - infoMargin &&
           refY >= REFERENCE_HEIGHT - 55 && refY <= REFERENCE_HEIGHT - 55 + infoSize) {
         button = 'info';
       }
@@ -322,10 +317,8 @@ export function setupInputHandlers(state: GameState): void {
 
     // Check dynamic lobby waiting buttons
     if (state.phase === ClientPhase.LOBBY_WAITING && !button) {
-      const centerX = REFERENCE_WIDTH / 2;
-      const aspectRatio = rect.width / rect.height;
-      const mobileBoost = aspectRatio < 1.0 ? 1.0 + (1.0 - aspectRatio) * 0.4 : 1.0;
-      const buttonSpacing = 10 + (mobileBoost - 1) * 40;
+      const centerX = refWidth() / 2;
+      const buttonSpacing = 10;
 
       if (refX >= centerX - 100 - buttonSpacing && refX <= centerX - buttonSpacing &&
           refY >= 340 && refY <= 380) {
@@ -341,7 +334,7 @@ export function setupInputHandlers(state: GameState): void {
       if (state.showFailedCombos) {
         // Only back button visible in failed combos view
         button = null;
-        const centerX = REFERENCE_WIDTH / 2;
+        const centerX = refWidth() / 2;
         if (refX >= centerX - 60 && refX <= centerX + 60 &&
             refY >= 400 && refY <= 440) {
           button = 'back';
@@ -420,7 +413,7 @@ function handleTapAt(state: GameState, tapX: number, tapY: number, winWidth: num
   lastTapTime = now;
 
   // Convert tap position to reference coordinates
-  const scaleX = winWidth / REFERENCE_WIDTH;
+  const scaleX = winWidth / refWidth();
   const scaleY = winHeight / REFERENCE_HEIGHT;
   const scale = Math.min(scaleX, scaleY);
   const refX = tapX / scaleX;
@@ -456,14 +449,11 @@ function handleTapAt(state: GameState, tapX: number, tapY: number, winWidth: num
 }
 
 function handleMainMenuTap(state: GameState, refX: number, refY: number, scaleX: number, scaleY: number): void {
-  // Info button (bottom-right) - smaller and square on mobile
-  // Convert scale ratio to actual aspect ratio: (scaleX/scaleY) * (REF_W/REF_H) = width/height
-  const aspectRatio = (scaleX / scaleY) * (REFERENCE_WIDTH / REFERENCE_HEIGHT);
-  const isMobile = aspectRatio < 1.0;
-  const infoSize = isMobile ? 28 : 45;
+  // Info button (bottom-right)
+  const infoSize = 45;
   const infoWidth = infoSize * scaleY / scaleX;
-  const infoMargin = isMobile ? 25 : 10;
-  if (inTapArea(refX, refY, REFERENCE_WIDTH - infoMargin - infoWidth, REFERENCE_HEIGHT - 55, infoWidth, infoSize)) {
+  const infoMargin = 10;
+  if (inTapArea(refX, refY, refWidth() - infoMargin - infoWidth, REFERENCE_HEIGHT - 55, infoWidth, infoSize)) {
     playSound('selected', 0.5);
     state.phase = ClientPhase.INFO;
     return;
@@ -516,7 +506,7 @@ function autoConnectToServer(state: GameState): void {
 }
 
 function handleServerConnectTap(state: GameState, refX: number, refY: number): void {
-  const centerX = REFERENCE_WIDTH / 2;
+  const centerX = refWidth() / 2;
 
   // Back button (top-left) - matches drawButton('< Back', 10, 10, 70, 35)
   if (inTapArea(refX, refY, 10, 10, 95, 35)) {
@@ -526,7 +516,7 @@ function handleServerConnectTap(state: GameState, refX: number, refY: number): v
   }
 
   // Player name field - matches y(185) to y(185 + 40)
-  if (inTapArea(refX, refY, 0, 185, REFERENCE_WIDTH, 40)) {
+  if (inTapArea(refX, refY, 0, 185, refWidth(), 40)) {
     focusHiddenInput();
     return;
   }
@@ -546,7 +536,7 @@ function handleServerConnectTap(state: GameState, refX: number, refY: number): v
 }
 
 function handleLobbyCreateTap(state: GameState, refX: number, refY: number): void {
-  const centerX = REFERENCE_WIDTH / 2;
+  const centerX = refWidth() / 2;
 
   // Back button (top-left) - matches drawButton('< Back', 10, 10, 70, 35)
   if (inTapArea(refX, refY, 10, 10, 95, 35)) {
@@ -557,7 +547,7 @@ function handleLobbyCreateTap(state: GameState, refX: number, refY: number): voi
   }
 
   // Game name field - matches y(185) to y(185 + 40)
-  if (inTapArea(refX, refY, 0, 185, REFERENCE_WIDTH, 40)) {
+  if (inTapArea(refX, refY, 0, 185, refWidth(), 40)) {
     focusHiddenInput();
     return;
   }
@@ -585,8 +575,8 @@ function handleLobbyJoinTap(state: GameState, refX: number, refY: number): void 
     return;
   }
 
-  // Refresh button (top-right) - matches drawButton('Refresh', REFERENCE_WIDTH - 90, 10, 80, 35)
-  if (inTapArea(refX, refY, REFERENCE_WIDTH - 90, 10, 80, 35)) {
+  // Refresh button (top-right) - matches drawButton('Refresh', refWidth() - 90, 10, 80, 35)
+  if (inTapArea(refX, refY, refWidth() - 90, 10, 80, 35)) {
     network.listGames();
     playSound('selection', 0.3);
     return;
@@ -599,7 +589,7 @@ function handleLobbyJoinTap(state: GameState, refX: number, refY: number): void 
 
   for (let i = 0; i < gamesList.length; i++) {
     const itemY = startY + i * itemHeight;
-    if (inTapArea(refX, refY, 0, itemY, REFERENCE_WIDTH, itemHeight)) {
+    if (inTapArea(refX, refY, 0, itemY, refWidth(), itemHeight)) {
       state.menuSelectedIndex = i;
       playSound('selected', 0.5);
       network.joinGame(gamesList[i].id, state.playerName);
@@ -609,12 +599,9 @@ function handleLobbyJoinTap(state: GameState, refX: number, refY: number): void 
 }
 
 function handleLobbyWaitingTap(state: GameState, refX: number, refY: number): void {
-  const centerX = REFERENCE_WIDTH / 2;
+  const centerX = refWidth() / 2;
 
-  // Calculate mobile boost for button spacing (must match renderer)
-  const aspectRatio = window.innerWidth / window.innerHeight;
-  const mobileBoost = aspectRatio < 1.0 ? 1.0 + (1.0 - aspectRatio) * 0.4 : 1.0;
-  const buttonSpacing = 10 + (mobileBoost - 1) * 40;
+  const buttonSpacing = 10;
 
   // Back button (top-left) - matches drawButton('< Back', 20, 10, 85, 35)
   if (inTapArea(refX, refY, 10, 10, 95, 35)) {
@@ -649,7 +636,7 @@ function handleLobbyWaitingTap(state: GameState, refX: number, refY: number): vo
 
 function handleGameTap(state: GameState, refX: number, refY: number): void {
   // Input text area - tap to open keyboard (around y=220, height ~60)
-  if (isMyTurn(state) && inTapArea(refX, refY, 0, 190, REFERENCE_WIDTH, 70)) {
+  if (isMyTurn(state) && inTapArea(refX, refY, 0, 190, refWidth(), 70)) {
     focusHiddenInput();
     return;
   }
@@ -659,7 +646,7 @@ function handleGameTap(state: GameState, refX: number, refY: number): void {
 }
 
 function handleGameOverTap(state: GameState, refX: number, refY: number): void {
-  const centerX = REFERENCE_WIDTH / 2;
+  const centerX = refWidth() / 2;
 
   if (state.showFailedCombos) {
     // Back button when viewing failed combos
