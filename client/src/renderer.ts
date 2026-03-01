@@ -7,6 +7,7 @@ import {
   getReadyCount,
 } from './state';
 import { PlayerState, MIN_PLAYERS, MAX_PLAYERS, GameInfo } from './protocol';
+import { getKeyboardHeight } from './input';
 
 // Constants
 const ENABLE_COMBO_PULSING = true;
@@ -21,8 +22,8 @@ const TEXT_SHADOW_COLOR = 'rgba(0, 0, 0, 0.4)';
 // Reference resolution (matches SDL3 version)
 const REFERENCE_HEIGHT = 480;
 function refWidth(): number {
-  if (window.matchMedia('(pointer: coarse)').matches) return 450;
-  if (window.innerWidth < 800) return 450;
+  if (window.matchMedia('(pointer: coarse)').matches) return 430;
+  if (window.innerWidth < 800) return 430;
   return 640;
 }
 
@@ -174,6 +175,8 @@ function handleResize(): void {
 
   canvas.width = width * dpr;
   canvas.height = height * dpr;
+  // Lock the CSS height to prevent Firefox from stretching the canvas when keyboard opens
+  canvas.style.height = height + 'px';
 
   ctx.scale(dpr, dpr);
 
@@ -713,7 +716,7 @@ function renderServerConnect(state: GameState): void {
 
   const title = state.joiningGame ? 'LIITU MÄNGUGA' : 'LOO MÄNG';
   //drawText(title, centerX, y(80), '#ffffff', fontSize(40), true);
-  drawTextDomino(title, centerX, y(80), fontSize(40), state.animTime, true, 220, 255, 2, 2);
+  drawTextDomino(title, centerX, y(90), fontSize(40), state.animTime, true, 220, 255, 2, 2, '600');
 
   // Player name
   drawText('Sinu nimi:', centerX, y(160), '#ffffff', fontSize(20), true);
@@ -749,7 +752,7 @@ function renderLobbyCreate(state: GameState): void {
   // Back button
   drawBackButton(state);
 
-  drawTextDomino('LOO MÄNG', centerX, y(80), fontSize(40), state.animTime, true, 220, 255, 2, 2);
+  drawTextDomino('LOO MÄNG', centerX, y(90), fontSize(40), state.animTime, true, 220, 255, 2, 2, '600');
 
   // Game name
   drawText('Mängu nimi:', centerX, y(160), '#ffffff', fontSize(20), true);
@@ -776,9 +779,9 @@ function renderLobbyJoin(state: GameState): void {
 
   // Refresh button
   const refreshHighlight = state.buttonHighlightOpacity?.['refresh'] || 0;
-  drawButton('Uuenda', refWidth() - 90, 10, 80, 35, refreshHighlight);
+  drawButton('Uuenda', refWidth() - 90, 10, 90, 35, refreshHighlight);
 
-  drawTextDomino('LIITU MÄNGUGA', centerX, y(80), fontSize(40), state.animTime, true, 220, 255, 2, 2);
+  drawTextDomino('LIITU MÄNGUGA', centerX, y(90), fontSize(40), state.animTime, true, 220, 255, 2, 2, '600');
 
   // Games list
   const gamesList = state.gamesList;
@@ -811,7 +814,7 @@ function renderLobbyWaiting(state: GameState): void {
 
   // Title - show game name
   //drawText(state.gameName, centerX, y(70), '#ffffff', fontSize(36), true);
-  drawTextDomino(state.gameName, centerX, y(80), fontSize(40), state.animTime, true, 220, 255, 2, 2);
+  drawTextDomino(state.gameName, centerX, y(90), fontSize(40), state.animTime, true, 220, 255, 2, 2, '600');
 
   // Player list
   const playerCount = `Mängijad (${state.players.length}/${MAX_PLAYERS}):`;
@@ -826,7 +829,7 @@ function renderLobbyWaiting(state: GameState): void {
     const isLocal = player.id === state.playerId;
     const color = isLocal ? '#ffff00' : '#c8c8c8';
 
-    drawText(playerLine, x(60), yPos, color, fontSize(20), false);
+    drawText(playerLine, x(60), yPos, color, fontSize(16), false);
     yPos += y(28);
   }
 
@@ -887,15 +890,18 @@ function renderGame(state: GameState): void {
     drawText(timerText, scale.windowWidth - x(40), scale.windowHeight - y(65), 'rgba(255, 255, 255, 0.4)', fontSize(30), true);
   }
 
+  // Shift combo+input up when the virtual keyboard is open
+  const kbShift = getKeyboardHeight() * 0.4;
+
   // Current combo (centered, large) - use displayCombo during transitions
   const comboScale = ENABLE_COMBO_PULSING ? 1.0 + 0.04 * Math.sin(state.animTime * 2.0) : 1.0;
   const combo = state.displayCombo || state.currentCombo;
-  drawScaledText(combo, centerX, y(120), '#ffffff', fontSize(80), comboScale);
+  drawScaledText(combo, centerX, y(120) - kbShift, '#ffffff', fontSize(80), comboScale);
 
   // Circular sector timer between combo and input
   // Calculate position dynamically to stay centered between combo bottom and input top
-  const comboBottom = y(120) + fontSize(80);
-  const inputTop = y(220);
+  const comboBottom = y(120) - kbShift + fontSize(80);
+  const inputTop = y(220) - kbShift;
   const baseTimerRadius = 25 * scale.scale;
   const timerY = ((comboBottom + inputTop) / 2) - 15;
   const timeRatio = Math.max(0, state.turnTimer / state.turnDuration);
@@ -940,8 +946,8 @@ function renderGame(state: GameState): void {
 
   // Player input
   if (isMyTurn(state)) {
-    drawInputBox(state.localInput || '_', centerX, y(220), 60, '#ffff00', 200);
-    drawInputWithComboHighlight(state.localInput, state.currentCombo, centerX, y(220), fontSize(60));
+    drawInputBox(state.localInput || '_', centerX, y(220) - kbShift, 60, '#ffff00', 200);
+    drawInputWithComboHighlight(state.localInput, state.currentCombo, centerX, y(220) - kbShift, fontSize(60));
   } else {
     const currentPlayer = getCurrentTurnPlayer(state);
     if (currentPlayer) {

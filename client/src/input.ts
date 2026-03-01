@@ -117,6 +117,13 @@ const ESTONIAN_UPPER: { [key: string]: string } = {
 // Hidden input element for mobile keyboard
 let hiddenInput: HTMLInputElement | null = null;
 
+// Keyboard height in screen pixels (non-zero when virtual keyboard is open)
+let keyboardHeight = 0;
+
+export function getKeyboardHeight(): number {
+  return keyboardHeight;
+}
+
 export function toUpperEstonian(input: string): string {
   let result = '';
   for (const char of input) {
@@ -151,6 +158,13 @@ export function setupInputHandlers(state: GameState): void {
   hiddenInput.setAttribute('spellcheck', 'false');
   hiddenInput.setAttribute('type', 'text');
   document.body.appendChild(hiddenInput);
+
+  // Track keyboard height via visualViewport (shrinks when keyboard opens)
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', () => {
+      keyboardHeight = Math.max(0, window.innerHeight - window.visualViewport!.height);
+    });
+  }
 
   hiddenInput.addEventListener('input', (e) => {
     const input = e.target as HTMLInputElement;
