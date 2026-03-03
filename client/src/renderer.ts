@@ -891,7 +891,7 @@ function renderGame(state: GameState): void {
   }
 
   // Shift combo+input up when the virtual keyboard is open
-  const kbShift = getKeyboardHeight() * 0.4;
+  const kbShift = getKeyboardHeight() * 0.2;
 
   // Current combo (centered, large) - use displayCombo during transitions
   const comboScale = ENABLE_COMBO_PULSING ? 1.0 + 0.04 * Math.sin(state.animTime * 2.0) : 1.0;
